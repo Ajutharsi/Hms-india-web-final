@@ -1,0 +1,143 @@
+@php
+$customizerHidden = 'customizer-hide';
+$configData = Helper::appClasses();
+@endphp
+
+@extends('layouts/blankLayout')
+
+@section('content')
+<div class="invoice-print p-12">
+
+  {{-- Header --}}
+  <div class="d-flex justify-content-between flex-row mb-6">
+    <div>
+      @if($hospitalSettings->logo_url)
+        <img src="{{ $hospitalSettings->logo_url }}"
+          alt="Logo" style="height:60px;object-fit:contain;" class="mb-2 d-block" />
+      @else
+        <div class="d-flex align-items-center mb-2 gap-2">
+          <i class="icon-base ti tabler-building-hospital text-primary" style="font-size:2rem;"></i>
+        </div>
+      @endif
+      <span class="fw-bold fs-4">{{ $hospitalSettings->hospital_name }}</span>
+      @if($hospitalSettings->address)
+      <p class="mb-1">{{ $hospitalSettings->address }}{{ $hospitalSettings->city ? ', ' . $hospitalSettings->city : '' }}</p>
+      @endif
+      <p class="mb-0">
+        @if($hospitalSettings->phone) {{ $hospitalSettings->phone }} @endif
+        @if($hospitalSettings->phone && $hospitalSettings->email) | @endif
+        @if($hospitalSettings->email) {{ $hospitalSettings->email }} @endif
+      </p>
+    </div>
+    <div class="text-end">
+      <h5 class="mb-2">PATIENT SUMMARY</h5>
+      <p class="mb-1 fw-medium fs-5">{{ $patient->mrn }}</p>
+      <p class="mb-0">Printed: {{ now()->format('d M Y H:i') }}</p>
+    </div>
+  </div>
+
+  <hr class="mb-6" />
+
+  {{-- Demographics --}}
+  <div class="row g-4 mb-6">
+    <div class="col-sm-6">
+      <div class="d-flex align-items-start gap-3 mb-2">
+        <img src="{{ $patient->photo_url }}" alt="{{ $patient->name }}"
+          style="width:56px;height:56px;object-fit:cover;border-radius:6px;"
+          onerror="this.onerror=null;this.src='{{ asset('images/defaults/patient.png') }}';" />
+        <div>
+          <h6 class="mb-1">Patient Details:</h6>
+          <p class="mb-0 fw-medium">{{ $patient->name }}</p>
+        </div>
+      </div>
+      <p class="mb-1">Gender: {{ ucfirst($patient->gender) }} &nbsp; | &nbsp; DOB: {{ $patient->dob ? \Carbon\Carbon::parse($patient->dob)->format('d M Y') : 'N/A' }}</p>
+      <p class="mb-1">Blood Group: {{ $patient->blood_group ?? 'N/A' }}</p>
+      <p class="mb-1">Phone: {{ $patient->phone ?? 'N/A' }} &nbsp; | &nbsp; Email: {{ $patient->email ?? 'N/A' }}</p>
+      <p class="mb-0">Address: {{ $patient->address ?? 'N/A' }}</p>
+    </div>
+    <div class="col-sm-6">
+      <h6>Emergency Contact:</h6>
+      <p class="mb-1">{{ $patient->emergency_contact_name ?? 'N/A' }}</p>
+      <p class="mb-1">{{ $patient->emergency_contact ?? 'N/A' }}</p>
+      <h6 class="mt-4">Status:</h6>
+      <p class="mb-0 text-capitalize">{{ $patient->patient_type }} - {{ $patient->status }}</p>
+    </div>
+  </div>
+
+  {{-- Allergies --}}
+  <h6 class="mb-3">Allergies</h6>
+  @if($patient->allergies->isEmpty())
+    <p class="text-muted">No known allergies.</p>
+  @else
+  <table class="table table-sm table-bordered mb-6">
+    <thead class="table-light">
+      <tr><th>Allergen</th><th>Type</th><th>Severity</th><th>Reaction</th></tr>
+    </thead>
+    <tbody>
+      @foreach($patient->allergies as $allergy)
+      <tr>
+        <td>{{ $allergy->allergen }}</td>
+        <td class="text-capitalize">{{ $allergy->type }}</td>
+        <td class="text-capitalize">{{ $allergy->severity }}</td>
+        <td>{{ $allergy->reaction ?? '—' }}</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+  @endif
+
+  {{-- Problems --}}
+  <h6 class="mb-3">Ongoing Problems</h6>
+  @if($patient->problems->isEmpty())
+    <p class="text-muted">No recorded problems.</p>
+  @else
+  <table class="table table-sm table-bordered mb-6">
+    <thead class="table-light">
+      <tr><th>Problem</th><th>Onset</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      @foreach($patient->problems as $problem)
+      <tr>
+        <td>{{ $problem->problem_name }}</td>
+        <td>{{ $problem->onset_date ? \Carbon\Carbon::parse($problem->onset_date)->format('d M Y') : '—' }}</td>
+        <td class="text-capitalize">{{ $problem->status }}</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+  @endif
+
+  {{-- Medical Records --}}
+  <h6 class="mb-3">Medical Record History</h6>
+  @if($patient->medicalRecords->isEmpty())
+    <p class="text-muted">No medical records.</p>
+  @else
+  <table class="table table-sm table-bordered mb-6">
+    <thead class="table-light">
+      <tr><th>Date</th><th>Type</th><th>Description</th><th>Doctor</th></tr>
+    </thead>
+    <tbody>
+      @foreach($patient->medicalRecords as $record)
+      <tr>
+        <td>{{ \Carbon\Carbon::parse($record->record_date)->format('d M Y') }}</td>
+        <td>{{ $record->record_type }}</td>
+        <td>{{ $record->description }}</td>
+        <td>{{ $record->doctor_name ?? '—' }}</td>
+      </tr>
+      @endforeach
+    </tbody>
+  </table>
+  @endif
+
+  {{-- Footer --}}
+  <hr class="mt-0 mb-4" />
+  <div class="d-flex justify-content-between align-items-end">
+    <p class="mb-0 small text-muted">Generated by {{ $hospitalSettings->hospital_name }} — {{ now()->format('d M Y H:i') }}</p>
+    <div class="text-center">
+      <div style="border-top: 2px solid #333; width: 180px; margin-bottom: 8px;"></div>
+      <p class="mb-0 fw-medium small">Authorized Signature</p>
+    </div>
+  </div>
+
+</div>
+@endsection

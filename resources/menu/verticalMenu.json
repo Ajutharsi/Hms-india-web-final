@@ -1,0 +1,574 @@
+{
+  "menu": [
+    {
+      "menuHeader": "Main"
+    },
+    {
+      "url": "/",
+      "name": "Dashboard",
+      "icon": "menu-icon icon-base ti tabler-smart-home",
+      "slug": "dashboard",
+      "roles": ["super_admin","admin","doctor","receptionist","lab_assistant","pharmacist","nurse","staff","patient"]
+    },
+    {
+      "url": "/reports",
+      "name": "Analytics",
+      "icon": "menu-icon icon-base ti tabler-chart-bar",
+      "slug": "reports.index",
+      "roles": ["super_admin","admin"],
+      "feature": "reports"
+    },
+    {
+      "menuHeader": "Patient",
+      "roles": ["super_admin","admin","doctor","receptionist","nurse"]
+    },
+    {
+      "url": "/patients",
+      "name": "Patients",
+      "icon": "menu-icon icon-base ti tabler-users",
+      "slug": "patients.index",
+      "roles": ["super_admin","admin","doctor","receptionist","nurse"]
+    },
+    {
+      "menuHeader": "Hospital",
+      "roles": ["super_admin","admin","doctor","receptionist","nurse"]
+    },
+    {
+      "url": "/doctors",
+      "name": "Doctors",
+      "icon": "menu-icon icon-base ti tabler-stethoscope",
+      "slug": "doctors.index",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "name": "Appointments",
+      "icon": "menu-icon icon-base ti tabler-calendar",
+      "slug": "admin.appointments",
+      "roles": ["super_admin","admin","doctor","receptionist"],
+      "submenu": [
+        {
+          "url": "/appointments",
+          "name": "All Appointments",
+          "slug": "appointments.index",
+          "roles": ["super_admin","admin","doctor","receptionist"]
+        },
+        {
+          "url": "/appointments/calendar",
+          "name": "Calendar View",
+          "slug": "appointments.calendar",
+          "roles": ["super_admin","admin","doctor","receptionist"]
+        }
+      ]
+    },
+    {
+      "url": "/settings/departments",
+      "name": "Departments",
+      "icon": "menu-icon icon-base ti tabler-building",
+      "slug": "settings.departments",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/referrals",
+      "name": "Referrals",
+      "icon": "menu-icon icon-base ti tabler-transfer",
+      "slug": "referrals.index",
+      "roles": ["super_admin","admin","doctor","receptionist"],
+      "feature": "referrals"
+    },
+    {
+      "url": "/consent-forms",
+      "name": "Consent Forms",
+      "icon": "menu-icon icon-base ti tabler-writing",
+      "slug": "consent-forms.index",
+      "roles": ["super_admin","admin","doctor","receptionist","nurse"],
+      "feature": "consent_forms"
+    },
+    {
+      "url": "/opd/queue",
+      "name": "OPD Queue",
+      "icon": "menu-icon icon-base ti tabler-list-numbers",
+      "slug": "opd.queue.index",
+      "roles": ["super_admin","admin","receptionist","doctor"]
+    },
+    {
+      "url": "/er",
+      "name": "Emergency (ER)",
+      "icon": "menu-icon icon-base ti tabler-ambulance",
+      "slug": "er.index",
+      "roles": ["super_admin","admin","doctor","nurse","receptionist"]
+    },
+    {
+      "menuHeader": "WARD",
+      "feature": "ward",
+      "roles": ["super_admin","admin","nurse","receptionist","doctor"]
+    },
+    {
+      "url": "/ward",
+      "name": "Ward",
+      "icon": "menu-icon icon-base ti tabler-building-hospital",
+      "slug": "ward.index",
+      "roles": ["super_admin","admin","nurse","receptionist"],
+      "feature": "ward"
+    },
+    {
+      "url": "/ward/admissions",
+      "name": "Admissions",
+      "icon": "menu-icon icon-base ti tabler-bed",
+      "slug": "ward.admissions",
+      "roles": ["super_admin","admin","nurse","doctor","receptionist"],
+      "feature": "ward"
+    },
+    {
+      "url": "/emar",
+      "name": "eMAR",
+      "icon": "menu-icon icon-base ti tabler-pill",
+      "slug": "emar.index",
+      "roles": ["super_admin","admin","doctor","nurse"],
+      "feature": "ward"
+    },
+    {
+      "url": "/vitals",
+      "name": "Vitals",
+      "icon": "menu-icon icon-base ti tabler-heartbeat",
+      "slug": "vitals.index",
+      "roles": ["super_admin","admin","doctor","nurse"],
+      "feature": "ward"
+    },
+    {
+      "url": "/nursing",
+      "name": "Nursing Notes",
+      "icon": "menu-icon icon-base ti tabler-notes",
+      "slug": "nursing.index",
+      "roles": ["super_admin","admin","doctor","nurse"],
+      "feature": "ward"
+    },
+    {
+      "url": "/shift-handover",
+      "name": "Shift Handover",
+      "icon": "menu-icon icon-base ti tabler-transfer-in",
+      "slug": "shift-handover",
+      "roles": ["super_admin","admin","nurse"],
+      "feature": "ward"
+    },
+    {
+      "url": "/ot",
+      "name": "Operation Theatre",
+      "icon": "menu-icon icon-base ti tabler-first-aid-kit",
+      "slug": "ot.index",
+      "roles": ["super_admin","admin","doctor","nurse"],
+      "feature": "ward"
+    },
+    {
+      "url": "/icu",
+      "name": "ICU Charting",
+      "icon": "menu-icon icon-base ti tabler-heart-rate-monitor",
+      "slug": "icu.index",
+      "roles": ["super_admin","admin","doctor","nurse"],
+      "feature": "ward"
+    },
+    {
+      "url": "/blood-bank",
+      "name": "Blood Bank",
+      "icon": "menu-icon icon-base ti tabler-droplet-filled",
+      "slug": "blood-bank.index",
+      "roles": ["super_admin","admin","doctor","nurse"],
+      "feature": "ward"
+    },
+    {
+      "menuHeader": "PHARMACY",
+      "feature": "pharmacy",
+      "roles": ["super_admin","admin","pharmacist","receptionist"]
+    },
+    {
+      "url": "/pharmacy/drugs",
+      "name": "Drug Master",
+      "icon": "menu-icon icon-base ti tabler-pill",
+      "slug": "pharmacy.drugs.index",
+      "roles": ["super_admin","admin","pharmacist"],
+      "feature": "pharmacy"
+    },
+    {
+      "url": "/pharmacy/dispensing",
+      "name": "Dispensing",
+      "icon": "menu-icon icon-base ti tabler-clipboard-list",
+      "slug": "pharmacy.dispensing.index",
+      "roles": ["super_admin","admin","pharmacist","receptionist"],
+      "feature": "pharmacy"
+    },
+    {
+      "menuHeader": "LABORATORY",
+      "feature": "lab",
+      "roles": ["super_admin","admin","lab_assistant","doctor","receptionist"]
+    },
+    {
+      "url": "/lab/tests",
+      "name": "Lab Tests",
+      "icon": "menu-icon icon-base ti tabler-flask",
+      "slug": "lab.tests.index",
+      "roles": ["super_admin","admin","lab_assistant","doctor","receptionist"],
+      "feature": "lab"
+    },
+    {
+      "url": "/lab/orders",
+      "name": "Lab Orders",
+      "icon": "menu-icon icon-base ti tabler-clipboard-list",
+      "slug": "lab.orders.index",
+      "roles": ["super_admin","admin","lab_assistant","doctor","receptionist"],
+      "feature": "lab"
+    },
+    {
+      "url": "/radiology",
+      "name": "Radiology",
+      "icon": "menu-icon icon-base ti tabler-radio",
+      "slug": "radiology.index",
+      "roles": ["super_admin","admin","doctor","receptionist"],
+      "feature": "lab"
+    },
+    {
+      "menuHeader": "STAFF",
+      "roles": ["super_admin","admin","nurse","staff"]
+    },
+    {
+      "url": "/food-intake",
+      "name": "Food Intake",
+      "icon": "menu-icon icon-base ti tabler-meat",
+      "slug": "food-intake.index",
+      "roles": ["super_admin","admin","nurse","staff"],
+      "feature": "food_intake"
+    },
+    {
+      "url": "/fluid-intake",
+      "name": "Fluid Intake",
+      "icon": "menu-icon icon-base ti tabler-droplet",
+      "slug": "fluid-intake.index",
+      "roles": ["super_admin","admin","nurse","staff"],
+      "feature": "fluid_intake"
+    },
+    {
+      "url": "/staff-rounds",
+      "name": "Staff Rounds",
+      "icon": "menu-icon icon-base ti tabler-clock-check",
+      "slug": "staff-rounds.index",
+      "roles": ["super_admin","admin","nurse"],
+      "feature": "staff_rounds"
+    },
+    {
+      "url": "/staff-rounds/my-rounds",
+      "name": "My Rounds",
+      "icon": "menu-icon icon-base ti tabler-clock-check",
+      "slug": "staff-rounds.my-rounds",
+      "roles": ["nurse","staff"],
+      "feature": "staff_rounds"
+    },
+    {
+      "menuHeader": "BILLING",
+      "feature": "billing",
+      "roles": ["super_admin","admin","receptionist"]
+    },
+    {
+      "url": "/billing/services",
+      "name": "Services",
+      "icon": "menu-icon icon-base ti tabler-list",
+      "slug": "billing.services.index",
+      "roles": ["super_admin","admin"],
+      "feature": "billing"
+    },
+    {
+      "url": "/billing/invoices",
+      "name": "Invoices",
+      "icon": "menu-icon icon-base ti tabler-file-invoice",
+      "slug": "billing.invoices.index",
+      "roles": ["super_admin","admin","receptionist"],
+      "feature": "billing"
+    },
+    {
+      "url": "/insurance",
+      "name": "Insurance Claims",
+      "icon": "menu-icon icon-base ti tabler-shield-check",
+      "slug": "insurance.index",
+      "roles": ["super_admin","admin","receptionist"],
+      "feature": "billing"
+    },
+    {
+      "url": "/ipd/deposits",
+      "name": "IPD Deposits",
+      "icon": "menu-icon icon-base ti tabler-cash",
+      "slug": "ipd.deposits.index",
+      "roles": ["super_admin","admin","receptionist"],
+      "feature": "billing"
+    },
+    {
+      "url": "/billing/schemes",
+      "name": "Scheme Billing",
+      "icon": "menu-icon icon-base ti tabler-building-bank",
+      "slug": "billing.schemes.index",
+      "roles": ["super_admin","admin","receptionist"],
+      "feature": "billing"
+    },
+    {
+      "menuHeader": "INVENTORY",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/inventory",
+      "name": "Inventory",
+      "icon": "menu-icon icon-base ti tabler-package",
+      "slug": "inventory.index",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/inventory/purchase-orders",
+      "name": "Purchase Orders",
+      "icon": "menu-icon icon-base ti tabler-shopping-cart",
+      "slug": "inventory.po.index",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "menuHeader": "REPORTS",
+      "feature": "reports",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/reports/patients",
+      "name": "Patient Report",
+      "icon": "menu-icon icon-base ti tabler-users",
+      "slug": "reports.patients",
+      "roles": ["super_admin","admin"],
+      "feature": "reports"
+    },
+    {
+      "url": "/reports/billing",
+      "name": "Billing Report",
+      "icon": "menu-icon icon-base ti tabler-file-invoice",
+      "slug": "reports.billing",
+      "roles": ["super_admin","admin"],
+      "feature": "reports"
+    },
+    {
+      "url": "/reports/inventory",
+      "name": "Inventory Report",
+      "icon": "menu-icon icon-base ti tabler-chart-bar",
+      "slug": "reports.inventory",
+      "roles": ["super_admin","admin"],
+      "feature": "reports"
+    },
+    {
+      "menuHeader": "USERS",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/users",
+      "name": "User Management",
+      "icon": "menu-icon icon-base ti tabler-shield-lock",
+      "slug": "users.index",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/staff",
+      "name": "Staff Management",
+      "icon": "menu-icon icon-base ti tabler-users-group",
+      "slug": "staff.index",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "menuHeader": "HR",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/hr/attendance",
+      "name": "Attendance",
+      "icon": "menu-icon icon-base ti tabler-clock-check",
+      "slug": "hr.attendance.index",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/hr/leaves",
+      "name": "Leave Requests",
+      "icon": "menu-icon icon-base ti tabler-calendar-off",
+      "slug": "hr.leaves.index",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "menuHeader": "SETTINGS",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/settings",
+      "name": "Settings",
+      "icon": "menu-icon icon-base ti tabler-settings",
+      "slug": "settings.index",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/settings/activity-log",
+      "name": "Activity Log",
+      "icon": "menu-icon icon-base ti tabler-history",
+      "slug": "settings.activity-log",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/notifications",
+      "name": "Notifications",
+      "icon": "menu-icon icon-base ti tabler-bell-ringing",
+      "slug": "notifications.index",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/notifications/templates",
+      "name": "Notification Templates",
+      "icon": "menu-icon icon-base ti tabler-template",
+      "slug": "notifications.templates",
+      "roles": ["super_admin","admin"]
+    },
+    {
+      "url": "/icd10",
+      "name": "ICD-10 Codes",
+      "icon": "menu-icon icon-base ti tabler-medical-cross",
+      "slug": "icd10.index",
+      "roles": ["super_admin","admin","doctor"]
+    },
+    {
+      "url": "/super-admin/hospitals",
+      "name": "Hospitals",
+      "icon": "menu-icon icon-base ti tabler-building-hospital",
+      "slug": "super-admin.hospitals",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/revenue",
+      "name": "Revenue Report",
+      "icon": "menu-icon icon-base ti tabler-chart-line",
+      "slug": "super-admin.revenue",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/subscription",
+      "name": "Subscription",
+      "icon": "menu-icon icon-base ti tabler-crown",
+      "slug": "subscription.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/analytics",
+      "name": "Platform Analytics",
+      "icon": "menu-icon icon-base ti tabler-chart-infographic",
+      "slug": "super-admin.analytics.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/system-health",
+      "name": "System Health",
+      "icon": "menu-icon icon-base ti tabler-heartbeat",
+      "slug": "super-admin.health.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/support",
+      "name": "Support Centre",
+      "icon": "menu-icon icon-base ti tabler-headset",
+      "slug": "super-admin.support.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/reports",
+      "name": "Reports & Export Centre",
+      "icon": "menu-icon icon-base ti tabler-report",
+      "slug": "super-admin.reports.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/settings",
+      "name": "Global Settings",
+      "icon": "menu-icon icon-base ti tabler-settings-cog",
+      "slug": "super-admin.settings.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/audit",
+      "name": "Audit & Activity Centre",
+      "icon": "menu-icon icon-base ti tabler-shield-check",
+      "slug": "super-admin.audit.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/maintenance",
+      "name": "Platform Maintenance",
+      "icon": "menu-icon icon-base ti tabler-server-cog",
+      "slug": "super-admin.maintenance.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/notifications",
+      "name": "Notification Centre",
+      "icon": "menu-icon icon-base ti tabler-bell-ringing",
+      "slug": "super-admin.notifications.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/super-admin/features",
+      "name": "Feature Management",
+      "icon": "menu-icon icon-base ti tabler-puzzle",
+      "slug": "super-admin.features.index",
+      "roles": ["super_admin"]
+    },
+    {
+      "url": "/subscription/current",
+      "name": "Subscription Status",
+      "icon": "menu-icon icon-base ti tabler-crown",
+      "slug": "subscription.current",
+      "roles": ["admin"]
+    },
+    {
+      "menuHeader": "PATIENT PORTAL",
+      "feature": "patient_portal",
+      "roles": ["patient"]
+    },
+    {
+      "url": "/appointments",
+      "name": "My Appointments",
+      "icon": "menu-icon icon-base ti tabler-calendar",
+      "slug": "appointments.index",
+      "roles": ["patient"],
+      "feature": "patient_portal"
+    },
+    {
+      "url": "/portal/book-appointment",
+      "name": "Book Appointment",
+      "icon": "menu-icon icon-base ti tabler-calendar-plus",
+      "slug": "portal.book-appointment",
+      "roles": ["patient"],
+      "feature": "patient_portal"
+    },
+    {
+      "url": "/portal/prescriptions",
+      "name": "My Prescriptions",
+      "icon": "menu-icon icon-base ti tabler-prescription",
+      "slug": "portal.prescriptions",
+      "roles": ["patient"],
+      "feature": "patient_portal"
+    },
+    {
+      "url": "/portal/invoices",
+      "name": "My Bills",
+      "icon": "menu-icon icon-base ti tabler-file-invoice",
+      "slug": "portal.invoices",
+      "roles": ["patient"],
+      "feature": "patient_portal"
+    },
+    {
+      "url": "/portal/lab-results",
+      "name": "My Lab Results",
+      "icon": "menu-icon icon-base ti tabler-flask",
+      "slug": "portal.lab-results",
+      "roles": ["patient"],
+      "feature": "patient_portal"
+    },
+    {
+      "url": "/user/profile",
+      "name": "My Profile",
+      "icon": "menu-icon icon-base ti tabler-user-circle",
+      "slug": "profile.show",
+      "roles": ["super_admin","admin","doctor","receptionist","lab_assistant","pharmacist","nurse","staff","patient"]
+    }
+  ]
+}

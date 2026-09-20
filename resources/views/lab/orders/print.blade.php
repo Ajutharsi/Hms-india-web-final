@@ -1,0 +1,152 @@
+@php
+$customizerHidden = 'customizer-hide';
+$configData = Helper::appClasses();
+@endphp
+
+@extends('layouts/blankLayout')
+
+@section('page-style')
+@vite('resources/assets/vendor/scss/pages/app-invoice-print.scss')
+@endsection
+
+@section('page-script')
+@vite('resources/assets/js/app-invoice-print.js')
+@endsection
+
+@section('content')
+<div class="invoice-print p-12">
+
+  {{-- Header --}}
+  <div class="d-flex justify-content-between flex-row mb-6">
+    <div>
+      @if($hospitalSettings->logo_url)
+        <img src="{{ $hospitalSettings->logo_url }}"
+          alt="Logo" style="height:60px;object-fit:contain;" class="mb-2 d-block" />
+      @else
+        <div class="d-flex align-items-center mb-2 gap-2">
+          <i class="icon-base ti tabler-flask text-primary" style="font-size:2rem;"></i>
+        </div>
+      @endif
+      <span class="fw-bold fs-4">{{ $hospitalSettings->hospital_name }} — Lab Department</span>
+      @if($hospitalSettings->address)
+      <p class="mb-1">{{ $hospitalSettings->address }}{{ $hospitalSettings->city ? ', ' . $hospitalSettings->city : '' }}</p>
+      @endif
+      @if($hospitalSettings->country)
+      <p class="mb-1">{{ $hospitalSettings->country }}</p>
+      @endif
+      <p class="mb-0">
+        @if($hospitalSettings->phone) {{ $hospitalSettings->phone }} @endif
+        @if($hospitalSettings->phone && $hospitalSettings->email) | @endif
+        @if($hospitalSettings->email) {{ $hospitalSettings->email }} @endif
+      </p>
+    </div>
+    <div class="text-end">
+      <h5 class="mb-2">LAB REPORT</h5>
+      <p class="mb-1 fw-medium fs-5">{{ $labOrder->order_no }}</p>
+      <p class="mb-1">Date: {{ \Carbon\Carbon::parse($labOrder->order_date)->format('d M Y') }}</p>
+      <p class="mb-0">
+        Status:
+        @php
+          $statusColors = ['pending'=>'warning','processing'=>'info','completed'=>'success','cancelled'=>'danger'];
+        @endphp
+        <span class="badge bg-label-{{ $statusColors[$labOrder->status] ?? 'secondary' }}">
+          {{ ucfirst($labOrder->status) }}
+        </span>
+      </p>
+    </div>
+  </div>
+
+  <hr class="mb-6" />
+
+  {{-- Patient & Doctor --}}
+  <div class="row d-flex justify-content-between mb-6">
+    <div class="col-sm-6 w-50">
+      <h6>Patient Details:</h6>
+      <p class="mb-1 fw-medium">{{ $labOrder->patient->name }}</p>
+      <p class="mb-1">MRN: {{ $labOrder->patient->mrn }}</p>
+      <p class="mb-1">Phone: {{ $labOrder->patient->phone ?? 'N/A' }}</p>
+      <p class="mb-0">Blood Group: {{ $labOrder->patient->blood_group ?? 'N/A' }}</p>
+    </div>
+    <div class="col-sm-6 w-50">
+      <h6>Referring Doctor:</h6>
+      <p class="mb-1 fw-medium">Dr. {{ $labOrder->doctor->name }}</p>
+      <p class="mb-1">{{ $labOrder->doctor->specialization }}</p>
+      <p class="mb-0">{{ $labOrder->doctor->qualification ?? '' }}</p>
+    </div>
+  </div>
+
+  {{-- Results Table --}}
+  <div class="table-responsive border border-bottom-0 border-top-0 rounded">
+    <table class="table m-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Test Name</th>
+          <th>Result</th>
+          <th>Unit</th>
+          <th>Normal Range</th>
+          <th>Flag</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach($labOrder->items as $index => $item)
+        <tr>
+          <td>{{ $index + 1 }}</td>
+          <td class="fw-medium">{{ $item->labTest->test_name }}</td>
+          <td>
+            @if($item->result)
+              <strong>{{ $item->result->result_value }}</strong>
+            @else
+              <span class="text-muted">Pending</span>
+            @endif
+          </td>
+          <td>{{ $item->result->unit ?? $item->labTest->unit ?? '—' }}</td>
+          <td>{{ $item->result->normal_range ?? $item->labTest->normal_range_male ?? '—' }}</td>
+          <td>
+            @if($item->result)
+              @php
+                $flagColors = ['normal'=>'success','high'=>'danger','low'=>'warning','critical'=>'danger'];
+              @endphp
+              <span class="badge bg-label-{{ $flagColors[$item->result->flag] ?? 'secondary' }}">
+                {{ ucfirst($item->result->flag) }}
+              </span>
+            @else
+              <span class="text-muted">—</span>
+            @endif
+          </td>
+          <td><small>{{ $item->result->remarks ?? '—' }}</small></td>
+        </tr>
+        @endforeach
+      </tbody>
+    </table>
+  </div>
+
+  {{-- Notes --}}
+  @if($labOrder->notes)
+  <hr class="mt-0 mb-4" />
+  <div>
+    <span class="fw-medium">Notes: </span>
+    <span>{{ $labOrder->notes }}</span>
+  </div>
+  @endif
+
+  {{-- Signature --}}
+  <hr class="mt-6 mb-4" />
+  <div class="d-flex justify-content-between align-items-end">
+    <div>
+      @if($hospitalSettings->footer_note)
+      <p class="mb-1 small text-muted">{{ $hospitalSettings->footer_note }}</p>
+      @endif
+      <p class="mb-0 small">Generated by {{ $hospitalSettings->hospital_name }} — {{ now()->format('d M Y H:i') }}</p>
+      <p class="mb-0 small text-muted">This report is computer generated and does not require a signature.</p>
+    </div>
+    <div class="text-center">
+      <div style="border-top: 2px solid #333; width: 200px; margin-bottom: 8px;"></div>
+      <p class="mb-0 fw-medium">Dr. {{ $labOrder->doctor->name }}</p>
+      <p class="mb-0 small text-muted">{{ $labOrder->doctor->specialization }}</p>
+    </div>
+  </div>
+
+</div>
+@endsection

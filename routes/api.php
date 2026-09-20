@@ -1,0 +1,259 @@
+<?php
+
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\LabAssistantController;
+use App\Http\Controllers\Api\NurseController;
+use App\Http\Controllers\Api\PatientController;
+use App\Http\Controllers\Api\PharmacyController;
+use App\Http\Controllers\Api\ReceptionistController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/user', function (Request $request) {
+    return $request->user();
+})->middleware('auth:sanctum');
+
+// Flutter app auth — issues/revokes Sanctum bearer tokens (not the
+// stateful-cookie flow this file's `api` middleware group otherwise
+// prepends EnsureFrontendRequestsAreStateful for; a mobile client has no
+// matching Origin/Referer, so it falls through to token auth as intended).
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [AuthController::class, 'me']);
+
+    Route::prefix('patient')->group(function () {
+        Route::get('/appointments', [PatientController::class, 'appointments']);
+        Route::post('/appointments', [PatientController::class, 'bookAppointment']);
+        Route::post('/appointments/{appointment}/cancel', [PatientController::class, 'cancelAppointment']);
+        Route::get('/doctors', [PatientController::class, 'doctors']);
+        Route::get('/slots', [PatientController::class, 'slots']);
+        Route::get('/prescriptions', [PatientController::class, 'prescriptions']);
+        Route::get('/lab-results', [PatientController::class, 'labResults']);
+        Route::get('/invoices', [PatientController::class, 'invoices']);
+        Route::post('/invoices/{invoice}/request-help', [PatientController::class, 'requestInvoiceHelp']);
+        Route::get('/profile', [PatientController::class, 'profile']);
+        Route::post('/profile', [PatientController::class, 'updateProfile']);
+    });
+
+    Route::prefix('nurse')->group(function () {
+        Route::get('/dashboard', [NurseController::class, 'dashboard']);
+
+        Route::get('/patients', [NurseController::class, 'patients']);
+        Route::get('/patients/{patient}', [NurseController::class, 'patientDetail']);
+
+        Route::get('/wards', [NurseController::class, 'wards']);
+        Route::get('/wards/available-beds', [NurseController::class, 'availableBeds']);
+        Route::get('/wards/{ward}', [NurseController::class, 'wardDetail']);
+
+        Route::get('/admissions', [NurseController::class, 'admissions']);
+        Route::post('/admissions', [NurseController::class, 'admit']);
+        Route::put('/admissions/{admission}/discharge', [NurseController::class, 'dischargeAdmission']);
+        Route::put('/admissions/{admission}/transfer', [NurseController::class, 'transferAdmission']);
+        Route::get('/admissions/{admission}/balance', [NurseController::class, 'admissionBalance']);
+
+        Route::get('/emar', [NurseController::class, 'emarList']);
+        Route::post('/emar', [NurseController::class, 'emarStore']);
+        Route::put('/emar/{mar}/administer', [NurseController::class, 'emarAdminister']);
+        Route::delete('/emar/{mar}', [NurseController::class, 'emarDestroy']);
+
+        Route::get('/vitals', [NurseController::class, 'vitalsList']);
+        Route::post('/vitals', [NurseController::class, 'vitalsStore']);
+        Route::get('/vitals/patient/{patient}', [NurseController::class, 'vitalsHistory']);
+        Route::delete('/vitals/{vital}', [NurseController::class, 'vitalsDestroy']);
+
+        Route::get('/nursing-notes', [NurseController::class, 'nursingNotesList']);
+        Route::post('/nursing-notes', [NurseController::class, 'nursingNoteStore']);
+        Route::put('/nursing-notes/{note}', [NurseController::class, 'nursingNoteUpdate']);
+        Route::delete('/nursing-notes/{note}', [NurseController::class, 'nursingNoteDestroy']);
+
+        Route::get('/shift-handovers', [NurseController::class, 'handoversList']);
+        Route::get('/shift-handovers/ward-patients', [NurseController::class, 'handoverWardPatients']);
+        Route::get('/shift-handovers/create-meta', [NurseController::class, 'handoverCreateMeta']);
+        Route::get('/shift-handovers/alert-count', [NurseController::class, 'handoverAlertCount']);
+        Route::post('/shift-handovers', [NurseController::class, 'handoverStore']);
+        Route::get('/shift-handovers/{shiftHandover}', [NurseController::class, 'handoverDetail']);
+        Route::post('/shift-handovers/{shiftHandover}/submit', [NurseController::class, 'handoverSubmit']);
+        Route::post('/shift-handovers/{shiftHandover}/accept', [NurseController::class, 'handoverAccept']);
+        Route::post('/shift-handovers/{shiftHandover}/reject', [NurseController::class, 'handoverReject']);
+        Route::delete('/shift-handovers/{shiftHandover}', [NurseController::class, 'handoverDestroy']);
+
+        Route::get('/ot', [NurseController::class, 'otList']);
+        Route::post('/ot', [NurseController::class, 'otStore']);
+        Route::get('/ot/{ot}', [NurseController::class, 'otDetail']);
+        Route::put('/ot/{ot}/start', [NurseController::class, 'otStart']);
+        Route::put('/ot/{ot}/complete', [NurseController::class, 'otComplete']);
+        Route::delete('/ot/{ot}', [NurseController::class, 'otDestroy']);
+
+        Route::get('/icu', [NurseController::class, 'icuList']);
+        Route::post('/icu', [NurseController::class, 'icuStore']);
+        Route::get('/icu/{chart}', [NurseController::class, 'icuDetail']);
+        Route::delete('/icu/{chart}', [NurseController::class, 'icuDestroy']);
+
+        Route::get('/blood-bank', [NurseController::class, 'bloodBankIndex']);
+        Route::post('/blood-bank', [NurseController::class, 'bloodBankStore']);
+        Route::get('/blood-bank/transfusions', [NurseController::class, 'bloodBankTransfusions']);
+        Route::put('/blood-bank/{unit}/transfuse', [NurseController::class, 'bloodBankTransfuse']);
+        Route::put('/blood-bank/{unit}/status', [NurseController::class, 'bloodBankUpdateStatus']);
+        Route::delete('/blood-bank/{unit}', [NurseController::class, 'bloodBankDestroy']);
+
+        Route::get('/consent-forms', [NurseController::class, 'consentFormsList']);
+        Route::post('/consent-forms', [NurseController::class, 'consentFormStore']);
+        Route::post('/consent-forms/{consentForm}/signature', [NurseController::class, 'consentFormSign']);
+        Route::put('/consent-forms/{consentForm}/status', [NurseController::class, 'consentFormUpdateStatus']);
+        Route::delete('/consent-forms/{consentForm}', [NurseController::class, 'consentFormDestroy']);
+
+        Route::get('/er', [NurseController::class, 'erList']);
+        Route::post('/er', [NurseController::class, 'erStore']);
+        Route::get('/er/{er}', [NurseController::class, 'erDetail']);
+        Route::put('/er/{er}', [NurseController::class, 'erUpdate']);
+        Route::put('/er/{er}/triage', [NurseController::class, 'erTriage']);
+        Route::put('/er/{er}/discharge', [NurseController::class, 'erDischarge']);
+        Route::delete('/er/{er}', [NurseController::class, 'erDestroy']);
+
+        Route::get('/food-intake', [NurseController::class, 'foodIntakeList']);
+        Route::get('/food-intake/{patient}', [NurseController::class, 'foodIntakeDetail']);
+        Route::post('/food-intake/{patient}/diet-plan', [NurseController::class, 'foodIntakeStoreDietPlan']);
+        Route::post('/food-intake/{patient}/log-meal', [NurseController::class, 'foodIntakeLogMeal']);
+
+        Route::get('/fluid-intake', [NurseController::class, 'fluidIntakeList']);
+        Route::get('/fluid-intake/{patient}', [NurseController::class, 'fluidIntakeDetail']);
+        Route::post('/fluid-intake/{patient}/log', [NurseController::class, 'fluidIntakeLog']);
+        Route::delete('/fluid-logs/{fluidLog}', [NurseController::class, 'fluidIntakeDestroy']);
+
+        Route::get('/my-rounds', [NurseController::class, 'myRounds']);
+        Route::get('/rounds/alert-count', [NurseController::class, 'roundsAlertCount']);
+        Route::post('/rounds/{patient}/mark', [NurseController::class, 'markRound']);
+        Route::get('/rounds/{patient}/history', [NurseController::class, 'roundHistory']);
+        Route::get('/staff-rounds/assignments', [NurseController::class, 'staffRoundsAssignments']);
+
+        Route::get('/profile', [NurseController::class, 'profile']);
+        Route::post('/profile', [NurseController::class, 'updateProfile']);
+    });
+
+    // Staff role — its own dashboard; everything else (Patients, Food/Fluid
+    // Intake, Rounds, Profile) reuses the /nurse/* routes above, same as the
+    // web reuses the same controllers/routes for both roles.
+    Route::prefix('staff')->group(function () {
+        Route::get('/dashboard', [NurseController::class, 'staffDashboard']);
+    });
+
+    Route::prefix('lab')->group(function () {
+        Route::get('/dashboard', [LabAssistantController::class, 'dashboard']);
+
+        Route::get('/tests', [LabAssistantController::class, 'labTests']);
+        Route::post('/tests', [LabAssistantController::class, 'labTestStore']);
+        Route::put('/tests/{labTest}', [LabAssistantController::class, 'labTestUpdate']);
+        Route::delete('/tests/{labTest}', [LabAssistantController::class, 'labTestDestroy']);
+
+        Route::get('/orders', [LabAssistantController::class, 'labOrders']);
+        Route::post('/orders', [LabAssistantController::class, 'labOrderStore']);
+        Route::get('/orders/{labOrder}', [LabAssistantController::class, 'labOrderDetail']);
+        Route::post('/orders/{labOrder}/results', [LabAssistantController::class, 'labOrderEnterResults']);
+
+        Route::get('/patients', [LabAssistantController::class, 'patients']);
+
+        Route::get('/profile', [LabAssistantController::class, 'profile']);
+        Route::post('/profile', [LabAssistantController::class, 'updateProfile']);
+    });
+
+    Route::prefix('receptionist')->group(function () {
+        Route::get('/dashboard', [ReceptionistController::class, 'dashboard']);
+
+        Route::get('/patients', [ReceptionistController::class, 'patients']);
+        Route::post('/patients', [ReceptionistController::class, 'patientStore']);
+        Route::get('/patients/{patient}', [ReceptionistController::class, 'patientDetail']);
+        Route::post('/patients/{patient}', [ReceptionistController::class, 'patientUpdate']);
+
+        Route::get('/appointments', [ReceptionistController::class, 'appointments']);
+        Route::post('/appointments', [ReceptionistController::class, 'appointmentStore']);
+        Route::put('/appointments/{appointment}', [ReceptionistController::class, 'appointmentUpdate']);
+        Route::get('/appointments/slots', [ReceptionistController::class, 'appointmentSlots']);
+        Route::get('/doctors', [ReceptionistController::class, 'doctors']);
+
+        Route::get('/referrals', [ReceptionistController::class, 'referrals']);
+        Route::post('/referrals', [ReceptionistController::class, 'referralStore']);
+        Route::put('/referrals/{referral}/status', [ReceptionistController::class, 'referralUpdateStatus']);
+        Route::delete('/referrals/{referral}', [ReceptionistController::class, 'referralDestroy']);
+
+        Route::get('/opd-queue', [ReceptionistController::class, 'opdQueue']);
+        Route::post('/opd-queue', [ReceptionistController::class, 'opdQueueStore']);
+        Route::put('/opd-queue/call-next/{doctor}', [ReceptionistController::class, 'opdQueueCallNext']);
+        Route::put('/opd-queue/{token}/status', [ReceptionistController::class, 'opdQueueUpdateStatus']);
+        Route::delete('/opd-queue/{token}', [ReceptionistController::class, 'opdQueueDestroy']);
+
+        Route::get('/radiology', [ReceptionistController::class, 'radiologyOrders']);
+        Route::post('/radiology', [ReceptionistController::class, 'radiologyStore']);
+        Route::get('/radiology/{order}', [ReceptionistController::class, 'radiologyDetail']);
+        Route::put('/radiology/{order}', [ReceptionistController::class, 'radiologyUpdate']);
+        Route::put('/radiology/{order}/findings', [ReceptionistController::class, 'radiologyEnterFindings']);
+        Route::delete('/radiology/{order}', [ReceptionistController::class, 'radiologyDestroy']);
+
+        Route::get('/profile', [ReceptionistController::class, 'profile']);
+        Route::post('/profile', [ReceptionistController::class, 'updateProfile']);
+
+        // Ward/Admissions/Consent Forms/ER/Lab reuse the nurse+lab controllers
+        // (shared role middleware on the web) — see the /nurse and /lab
+        // groups above; NurseController/LabAssistantController's
+        // authNurseOrReceptionist()/authLabAssistantOrReceptionist() helpers
+        // already allow this role in, no separate routes needed here.
+
+        Route::get('/billing/invoices/stats', [BillingController::class, 'invoicesStats']);
+        Route::get('/billing/invoices', [BillingController::class, 'invoices']);
+        Route::get('/billing/invoices/services', [BillingController::class, 'invoiceServices']);
+        Route::post('/billing/invoices', [BillingController::class, 'invoiceStore']);
+        Route::get('/billing/invoices/{invoice}', [BillingController::class, 'invoiceDetail']);
+        Route::post('/billing/invoices/{invoice}/payment', [BillingController::class, 'invoiceAddPayment']);
+
+        Route::get('/billing/insurance-claims', [BillingController::class, 'insuranceClaims']);
+        Route::post('/billing/insurance-claims', [BillingController::class, 'insuranceClaimStore']);
+        Route::get('/billing/insurance-claims/{claim}', [BillingController::class, 'insuranceClaimDetail']);
+        Route::put('/billing/insurance-claims/{claim}', [BillingController::class, 'insuranceClaimUpdate']);
+        Route::put('/billing/insurance-claims/{claim}/status', [BillingController::class, 'insuranceClaimUpdateStatus']);
+        Route::delete('/billing/insurance-claims/{claim}', [BillingController::class, 'insuranceClaimDestroy']);
+
+        Route::get('/billing/ipd-deposits', [BillingController::class, 'ipdDeposits']);
+        Route::post('/billing/ipd-deposits', [BillingController::class, 'ipdDepositStore']);
+        Route::get('/billing/ipd-deposits/{deposit}', [BillingController::class, 'ipdDepositShow']);
+        Route::post('/billing/ipd-deposits/{deposit}/refund', [BillingController::class, 'ipdDepositRefund']);
+
+        Route::get('/billing/scheme-billing', [BillingController::class, 'schemeBillings']);
+        Route::post('/billing/scheme-billing', [BillingController::class, 'schemeBillingStore']);
+        Route::get('/billing/scheme-billing/{scheme}', [BillingController::class, 'schemeBillingDetail']);
+        Route::put('/billing/scheme-billing/{scheme}', [BillingController::class, 'schemeBillingUpdate']);
+        Route::put('/billing/scheme-billing/{scheme}/status', [BillingController::class, 'schemeBillingUpdateStatus']);
+        Route::delete('/billing/scheme-billing/{scheme}', [BillingController::class, 'schemeBillingDestroy']);
+    });
+
+    Route::prefix('pharmacy')->group(function () {
+        Route::get('/dashboard', [PharmacyController::class, 'dashboard']);
+
+        Route::get('/drugs', [PharmacyController::class, 'drugs']);
+        Route::post('/drugs', [PharmacyController::class, 'drugStore']);
+        Route::put('/drugs/{drug}', [PharmacyController::class, 'drugUpdate']);
+        Route::delete('/drugs/{drug}', [PharmacyController::class, 'drugDestroy']);
+        Route::post('/drugs/{drug}/stock', [PharmacyController::class, 'drugAddStock']);
+        Route::get('/drugs/{drug}/stock-history', [PharmacyController::class, 'drugStockHistory']);
+
+        Route::get('/dispensing', [PharmacyController::class, 'dispensingList']);
+        Route::post('/dispensing', [PharmacyController::class, 'dispensingStore']);
+        Route::get('/dispensing/alerts', [PharmacyController::class, 'dispensingAlerts']);
+        Route::get('/dispensing/from-prescription/{prescription}', [PharmacyController::class, 'dispensingFromPrescription']);
+        Route::get('/dispensing/{dispensing}', [PharmacyController::class, 'dispensingDetail']);
+
+        Route::get('/patients', [PharmacyController::class, 'patients']);
+
+        Route::get('/profile', [PharmacyController::class, 'profile']);
+        Route::post('/profile', [PharmacyController::class, 'updateProfile']);
+    });
+});
+
+// The navbar global-search endpoint used to live here as `/search` (->'auth').
+// Moved to routes/web.php as `/api/search` — see the comment there for why:
+// this file's `api` middleware group only authenticates via Sanctum's
+// stateful-SPA cookie flow, gated by config('sanctum.stateful') matching the
+// request's Origin/Referer host, which doesn't cover arbitrary local dev
+// ports. That silently broke the search box for every request.
