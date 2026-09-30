@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\LabAssistantController;
 use App\Http\Controllers\Api\NurseController;
 use App\Http\Controllers\Api\PatientController;
@@ -139,6 +140,26 @@ Route::middleware('auth:sanctum')->group(function () {
     // web reuses the same controllers/routes for both roles.
     Route::prefix('staff')->group(function () {
         Route::get('/dashboard', [NurseController::class, 'staffDashboard']);
+    });
+
+    Route::prefix('doctor')->group(function () {
+        Route::get('/dashboard', [DoctorController::class, 'dashboard']);
+
+        Route::get('/appointments', [DoctorController::class, 'appointments']);
+        Route::get('/appointments/{appointment}', [DoctorController::class, 'appointmentDetail']);
+        Route::post('/appointments/{appointment}/consultation', [DoctorController::class, 'consultationStore']);
+
+        Route::get('/consultations/{consultation}', [DoctorController::class, 'consultationDetail']);
+        Route::post('/consultations/{consultation}/prescription', [DoctorController::class, 'prescriptionStore']);
+        Route::get('/prescriptions', [DoctorController::class, 'prescriptions']);
+
+        Route::get('/patients', [DoctorController::class, 'patients']);
+        Route::get('/patients/{patient}', [DoctorController::class, 'patientDetail']);
+
+        Route::get('/icd10', [DoctorController::class, 'icd10Search']);
+
+        Route::get('/profile', [DoctorController::class, 'profile']);
+        Route::post('/profile', [DoctorController::class, 'updateProfile']);
     });
 
     Route::prefix('lab')->group(function () {
