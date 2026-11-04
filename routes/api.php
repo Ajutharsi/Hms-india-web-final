@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\DoctorController;
@@ -187,6 +188,30 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
 
         Route::get('/profile', [LabAssistantController::class, 'profile']);
         Route::post('/profile', [LabAssistantController::class, 'updateProfile']);
+    });
+
+    /*
+     * The administrator's own endpoints. Everything else an admin touches
+     * — patients, wards, billing, pharmacy, the lab — runs on the clinical
+     * roles' routes, which AuthorizesRoles already lets an admin through.
+     * Only what has no clinical owner is here.
+     */
+    Route::prefix('admin')->group(function () {
+        Route::get('/dashboard', [AdminController::class, 'dashboard']);
+
+        Route::get('/reports/patients', [AdminController::class, 'patientReport']);
+        Route::get('/reports/billing', [AdminController::class, 'billingReport']);
+        Route::get('/reports/inventory', [AdminController::class, 'inventoryReport']);
+
+        Route::get('/settings', [AdminController::class, 'settings']);
+        Route::put('/settings', [AdminController::class, 'updateSettings']);
+
+        Route::get('/departments', [AdminController::class, 'departments']);
+        Route::post('/departments', [AdminController::class, 'departmentStore']);
+        Route::put('/departments/{department}', [AdminController::class, 'departmentUpdate']);
+        Route::delete('/departments/{department}', [AdminController::class, 'departmentDestroy']);
+
+        Route::get('/activity-log', [AdminController::class, 'activityLog']);
     });
 
     Route::prefix('receptionist')->group(function () {
