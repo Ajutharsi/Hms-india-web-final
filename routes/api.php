@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminDirectoryController;
+use App\Http\Controllers\Api\AdminInventoryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\DoctorController;
@@ -227,6 +228,21 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::delete('/users/{user}', [AdminDirectoryController::class, 'userDestroy']);
 
         Route::get('/staff', [AdminDirectoryController::class, 'staff']);
+
+        Route::get('/inventory', [AdminInventoryController::class, 'items']);
+        Route::post('/inventory', [AdminInventoryController::class, 'itemStore']);
+        Route::put('/inventory/{item}', [AdminInventoryController::class, 'itemUpdate']);
+        Route::delete('/inventory/{item}', [AdminInventoryController::class, 'itemDestroy']);
+
+        Route::get('/purchase-orders', [AdminInventoryController::class, 'purchaseOrders']);
+        Route::post('/purchase-orders', [AdminInventoryController::class, 'purchaseOrderStore']);
+        Route::put('/purchase-orders/{po}/receive', [AdminInventoryController::class, 'purchaseOrderReceive']);
+        Route::delete('/purchase-orders/{po}', [AdminInventoryController::class, 'purchaseOrderDestroy']);
+
+        Route::get('/services', [AdminInventoryController::class, 'services']);
+        Route::post('/services', [AdminInventoryController::class, 'serviceStore']);
+        Route::put('/services/{billingService}', [AdminInventoryController::class, 'serviceUpdate']);
+        Route::delete('/services/{billingService}', [AdminInventoryController::class, 'serviceDestroy']);
     });
 
     Route::prefix('receptionist')->group(function () {
