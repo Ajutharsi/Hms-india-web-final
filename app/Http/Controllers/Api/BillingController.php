@@ -11,6 +11,7 @@ use App\Models\Patient;
 use App\Models\SchemeBilling;
 use App\Models\User;
 use App\Services\InvoiceService;
+use App\Http\Controllers\Api\Concerns\AuthorizesRoles;
 use Illuminate\Http\Request;
 
 /**
@@ -21,11 +22,11 @@ use Illuminate\Http\Request;
  */
 class BillingController extends Controller
 {
+    use AuthorizesRoles;
+
     private function authReceptionist(Request $request): User
     {
-        abort_unless($request->user()->hasRole('receptionist'), 403, 'This account is not a receptionist account.');
-
-        return $request->user();
+        return $this->authRoles($request, ['receptionist'], 'This account is not a receptionist account.');
     }
 
     private function patientSearch($query, ?string $keyword)

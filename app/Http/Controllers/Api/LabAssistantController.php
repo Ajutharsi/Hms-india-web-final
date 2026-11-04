@@ -11,6 +11,7 @@ use App\Models\LabTest;
 use App\Models\Patient;
 use App\Models\PatientMedicalRecord;
 use App\Models\User;
+use App\Http\Controllers\Api\Concerns\AuthorizesRoles;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -25,11 +26,11 @@ use Illuminate\Validation\Rules\Password;
  */
 class LabAssistantController extends Controller
 {
+    use AuthorizesRoles;
+
     private function authLabAssistant(Request $request): User
     {
-        abort_unless($request->user()->hasRole('lab_assistant'), 403, 'This account is not a lab assistant account.');
-
-        return $request->user();
+        return $this->authRoles($request, ['lab_assistant'], 'This account is not a lab assistant account.');
     }
 
     /**
@@ -44,9 +45,7 @@ class LabAssistantController extends Controller
      */
     private function authLabDesk(Request $request): User
     {
-        abort_unless($request->user()->hasAnyRole(['lab_assistant', 'receptionist', 'doctor']), 403, 'This account cannot access this feature.');
-
-        return $request->user();
+        return $this->authRoles($request, ['lab_assistant', 'receptionist', 'doctor']);
     }
 
     public function dashboard(Request $request)

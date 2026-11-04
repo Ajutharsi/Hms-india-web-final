@@ -13,6 +13,7 @@ use App\Models\Referral;
 use App\Models\User;
 use App\Models\Ward;
 use App\Services\SubscriptionLimitService;
+use App\Http\Controllers\Api\Concerns\AuthorizesRoles;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -31,11 +32,11 @@ use Illuminate\Validation\ValidationException;
  */
 class ReceptionistController extends Controller
 {
+    use AuthorizesRoles;
+
     private function authReceptionist(Request $request): User
     {
-        abort_unless($request->user()->hasRole('receptionist'), 403, 'This account is not a receptionist account.');
-
-        return $request->user();
+        return $this->authRoles($request, ['receptionist'], 'This account is not a receptionist account.');
     }
 
     /**
@@ -47,9 +48,7 @@ class ReceptionistController extends Controller
      */
     private function authReceptionistOrDoctor(Request $request): User
     {
-        abort_unless($request->user()->hasAnyRole(['receptionist', 'doctor']), 403, 'This account cannot access this feature.');
-
-        return $request->user();
+        return $this->authRoles($request, ['receptionist', 'doctor']);
     }
 
     private function patientSearch($query, ?string $keyword)

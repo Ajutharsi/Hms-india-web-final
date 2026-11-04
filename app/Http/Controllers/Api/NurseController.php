@@ -26,6 +26,7 @@ use App\Models\StaffRound;
 use App\Models\User;
 use App\Models\Vital;
 use App\Models\Ward;
+use App\Http\Controllers\Api\Concerns\AuthorizesRoles;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -46,11 +47,11 @@ use Illuminate\Validation\ValidationException;
  */
 class NurseController extends Controller
 {
+    use AuthorizesRoles;
+
     private function authNurse(Request $request): User
     {
-        abort_unless($request->user()->hasRole('nurse'), 403, 'This account is not a nurse account.');
-
-        return $request->user();
+        return $this->authRoles($request, ['nurse'], 'This account is not a nurse account.');
     }
 
     /**
@@ -60,9 +61,7 @@ class NurseController extends Controller
      */
     private function authNurseOrStaff(Request $request): User
     {
-        abort_unless($request->user()->hasAnyRole(['nurse', 'staff']), 403, 'This account cannot access this feature.');
-
-        return $request->user();
+        return $this->authRoles($request, ['nurse', 'staff']);
     }
 
     /**
@@ -78,9 +77,7 @@ class NurseController extends Controller
      */
     private function authNurseOrDoctor(Request $request): User
     {
-        abort_unless($request->user()->hasAnyRole(['nurse', 'doctor']), 403, 'This account cannot access this feature.');
-
-        return $request->user();
+        return $this->authRoles($request, ['nurse', 'doctor']);
     }
 
     /**
@@ -91,9 +88,7 @@ class NurseController extends Controller
      */
     private function authWardTeam(Request $request): User
     {
-        abort_unless($request->user()->hasAnyRole(['nurse', 'receptionist', 'doctor']), 403, 'This account cannot access this feature.');
-
-        return $request->user();
+        return $this->authRoles($request, ['nurse', 'receptionist', 'doctor']);
     }
 
     private function patientSearch($query, ?string $keyword)

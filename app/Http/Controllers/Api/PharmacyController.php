@@ -10,6 +10,7 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\User;
 use App\Services\DispensingService;
+use App\Http\Controllers\Api\Concerns\AuthorizesRoles;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -26,18 +27,16 @@ use Illuminate\Validation\Rules\Password;
  */
 class PharmacyController extends Controller
 {
+    use AuthorizesRoles;
+
     private function authPharmacist(Request $request): User
     {
-        abort_unless($request->user()->hasRole('pharmacist'), 403, 'This account is not a pharmacist account.');
-
-        return $request->user();
+        return $this->authRoles($request, ['pharmacist'], 'This account is not a pharmacist account.');
     }
 
     private function authPharmacistOrReceptionist(Request $request): User
     {
-        abort_unless($request->user()->hasAnyRole(['pharmacist', 'receptionist']), 403, 'This account cannot access this feature.');
-
-        return $request->user();
+        return $this->authRoles($request, ['pharmacist', 'receptionist']);
     }
 
     // ============================================================
