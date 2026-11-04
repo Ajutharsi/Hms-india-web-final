@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminDirectoryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\DoctorController;
@@ -212,6 +213,20 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::delete('/departments/{department}', [AdminController::class, 'departmentDestroy']);
 
         Route::get('/activity-log', [AdminController::class, 'activityLog']);
+
+        Route::get('/doctors', [AdminDirectoryController::class, 'doctors']);
+        Route::post('/doctors', [AdminDirectoryController::class, 'doctorStore']);
+        Route::get('/doctors/{doctor}', [AdminDirectoryController::class, 'doctorDetail']);
+        Route::put('/doctors/{doctor}', [AdminDirectoryController::class, 'doctorUpdate']);
+        Route::delete('/doctors/{doctor}', [AdminDirectoryController::class, 'doctorDestroy']);
+
+        Route::get('/users', [AdminDirectoryController::class, 'users']);
+        Route::post('/users', [AdminDirectoryController::class, 'userStore']);
+        Route::put('/users/{user}', [AdminDirectoryController::class, 'userUpdate']);
+        Route::put('/users/{user}/password', [AdminDirectoryController::class, 'userResetPassword']);
+        Route::delete('/users/{user}', [AdminDirectoryController::class, 'userDestroy']);
+
+        Route::get('/staff', [AdminDirectoryController::class, 'staff']);
     });
 
     Route::prefix('receptionist')->group(function () {
