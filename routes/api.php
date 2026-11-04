@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminDirectoryController;
+use App\Http\Controllers\Api\AdminHrController;
 use App\Http\Controllers\Api\AdminInventoryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
@@ -243,6 +244,21 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::post('/services', [AdminInventoryController::class, 'serviceStore']);
         Route::put('/services/{billingService}', [AdminInventoryController::class, 'serviceUpdate']);
         Route::delete('/services/{billingService}', [AdminInventoryController::class, 'serviceDestroy']);
+
+        Route::get('/attendance', [AdminHrController::class, 'attendance']);
+        Route::post('/attendance', [AdminHrController::class, 'attendanceStore']);
+        Route::put('/attendance/{attendance}', [AdminHrController::class, 'attendanceUpdate']);
+
+        Route::get('/leaves', [AdminHrController::class, 'leaves']);
+        Route::post('/leaves', [AdminHrController::class, 'leaveStore']);
+        Route::put('/leaves/{leave}/approve', [AdminHrController::class, 'leaveApprove']);
+        Route::put('/leaves/{leave}/reject', [AdminHrController::class, 'leaveReject']);
+        Route::delete('/leaves/{leave}', [AdminHrController::class, 'leaveDestroy']);
+
+        Route::get('/notifications', [AdminHrController::class, 'notifications']);
+        Route::get('/notification-templates', [AdminHrController::class, 'templates']);
+        Route::post('/notification-templates', [AdminHrController::class, 'templateStore']);
+        Route::put('/notification-templates/{template}', [AdminHrController::class, 'templateUpdate']);
     });
 
     Route::prefix('receptionist')->group(function () {
