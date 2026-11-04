@@ -17,13 +17,24 @@ class RequirePasswordChange
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->is('user/profile*', 'login', 'logout', 'register', 'forgot-password', 'reset-password/*', 'up', 'session/ping', 'impersonate/*')) {
+        if ($request->is('user/profile*', 'login', 'logout', 'register', 'forgot-password', 'reset-password/*', 'up', 'session/ping', 'impersonate/*',
+            'api/login', 'api/logout', 'api/register', 'api/forgot-password', 'api/me', 'api/*/profile')) {
             return $next($request);
         }
 
-        $user = auth()->user();
+        $user = $request->user();
 
         if ($user && $user->must_change_password) {
+            // The app can't be redirected to a web page; it gets a flag it
+            // can act on, and its own profile screen stays reachable above
+            // so the password can actually be changed.
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'You must change your password before continuing.',
+                    'must_change_password' => true,
+                ], 403);
+            }
+
             return redirect()->route('profile.show')
                 ->with('warning', 'You must change your password before continuing.');
         }

@@ -19,10 +19,18 @@ Route::get('/user', function (Request $request) {
 // stateful-cookie flow this file's `api` middleware group otherwise
 // prepends EnsureFrontendRequestsAreStateful for; a mobile client has no
 // matching Origin/Referer, so it falls through to token auth as intended).
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::middleware('auth:sanctum')->group(function () {
+// Throttled: these take credentials and are the app's only unauthenticated
+// endpoints, so they're the ones worth guessing against. The web login is
+// already rate-limited by Fortify; this is the same idea for the API.
+Route::middleware('throttle:api-login')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+});
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:api-login');
+
+// Everything behind a token also answers to the two gates the web has
+// always had: an inactive subscription and a forced password change.
+Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 

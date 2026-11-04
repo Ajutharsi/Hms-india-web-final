@@ -18,7 +18,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    // Browser origins allowed to call this API. The Flutter app is not a
+    // browser and is unaffected by CORS, so this only needs the web front
+    // ends: set CORS_ALLOWED_ORIGINS=https://hms.example.com in .env.
+    'allowed_origins' => array_filter(explode(',', (string) env('CORS_ALLOWED_ORIGINS', env('APP_URL', 'http://localhost')))),
 
     'allowed_origins_patterns' => [],
 

@@ -2,7 +2,11 @@
 
 namespace App\Providers;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache;
@@ -27,6 +31,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The app's only unauthenticated endpoints take credentials, so
+        // they are what a guesser would hammer. Keyed by email + IP the way
+        // Fortify keys the web login: a whole hospital often shares one
+        // outbound IP, and one person's typo shouldn't lock out the rest.
+        RateLimiter::for('api-login', function (Request $request) {
+            $key = Str::transliterate(Str::lower((string) $request->input('email')) . '|' . $request->ip());
+
+            return [Limit::perMinute(5)->by($key), Limit::perMinute(30)->by($request->ip())];
+        });
+
         Vite::useStyleTagAttributes(function (?string $src, string $url, ?array $chunk, ?array $manifest) {
             if ($src !== null) {
                 return [
