@@ -160,7 +160,12 @@ class BillingController extends Controller
 
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_method' => ['required', 'string', 'max:50'],
+            // `payments.payment_method` is an enum. Accepting any string up
+            // to 50 characters let the value through to MySQL, which
+            // rejected it and turned a user's typo into a 500. Every other
+            // payment_method rule in the app already lists the column's
+            // values; this one did not.
+            'payment_method' => ['required', 'in:cash,card,bank_transfer,cheque,online,insurance,upi'],
             'reference_no' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
