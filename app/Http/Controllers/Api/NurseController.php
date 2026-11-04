@@ -66,15 +66,32 @@ class NurseController extends Controller
     }
 
     /**
-     * Ward (list/show/available-beds/admit), Consent Forms, and ER are all
-     * shared with the receptionist role on the web (same `role:...|nurse|
-     * receptionist` middleware) — used by both the nurse and receptionist
-     * mobile apps. Discharge/transfer/admission-balance stay nurse-only —
-     * the web excludes receptionist from those specifically.
+     * The clinical records a doctor reads and writes alongside the nurse:
+     * admissions, vitals, eMAR, nursing notes, OT, ICU and the blood bank.
+     * The web puts the doctor on every one of those route groups
+     * (`role:...|doctor|nurse`); the mobile API had left the doctor out, so
+     * a doctor opening any of these screens got a 403.
+     *
+     * Shift handover is deliberately not on this list. The web keeps it to
+     * `role:super_admin|admin|nurse`, and accepting a handover is something
+     * only the incoming nurse can do.
      */
-    private function authNurseOrReceptionist(Request $request): User
+    private function authNurseOrDoctor(Request $request): User
     {
-        abort_unless($request->user()->hasAnyRole(['nurse', 'receptionist']), 403, 'This account cannot access this feature.');
+        abort_unless($request->user()->hasAnyRole(['nurse', 'doctor']), 403, 'This account cannot access this feature.');
+
+        return $request->user();
+    }
+
+    /**
+     * Ward (list/show/available-beds/admit), Consent Forms, and ER, which
+     * the web shares between all three of these roles. Discharge, transfer
+     * and admission balance are not here: the web excludes the receptionist
+     * from those specifically, so they sit on [authNurseOrDoctor] instead.
+     */
+    private function authWardTeam(Request $request): User
+    {
+        abort_unless($request->user()->hasAnyRole(['nurse', 'receptionist', 'doctor']), 403, 'This account cannot access this feature.');
 
         return $request->user();
     }
@@ -263,7 +280,7 @@ class NurseController extends Controller
 
     public function wards(Request $request)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
 
         $wards = Ward::where('status', 'active')->orderBy('name')->get()->map(fn (Ward $w) => [
             'id' => $w->id,
@@ -282,7 +299,7 @@ class NurseController extends Controller
 
     public function wardDetail(Request $request, Ward $ward)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
         $ward->load(['beds.currentAdmission.patient']);
 
         return response()->json([
@@ -304,7 +321,7 @@ class NurseController extends Controller
 
     public function availableBeds(Request $request)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
         $request->validate(['ward_id' => ['required', 'exists:wards,id']]);
 
         $beds = Bed::where('ward_id', $request->ward_id)->where('status', 'available')->get()
@@ -315,7 +332,7 @@ class NurseController extends Controller
 
     public function admissions(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $query = Admission::with(['patient:id,name,mrn,photo', 'ward:id,name', 'bed:id,bed_no', 'doctor:id,name'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
@@ -342,7 +359,7 @@ class NurseController extends Controller
 
     public function admit(Request $request)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
 
         $validated = $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -377,7 +394,7 @@ class NurseController extends Controller
 
     public function dischargeAdmission(Request $request, Admission $admission)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $request->validate([
             'discharge_date' => ['required', 'date'],
@@ -397,7 +414,7 @@ class NurseController extends Controller
 
     public function transferAdmission(Request $request, Admission $admission)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $request->validate([
             'new_ward_id' => ['required', 'exists:wards,id'],
@@ -429,7 +446,7 @@ class NurseController extends Controller
 
     public function admissionBalance(Request $request, Admission $admission)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $invoiceTotal = (float) $admission->invoices()->sum('total');
         $paymentsMade = (float) $admission->invoices()->join('payments', 'payments.invoice_id', '=', 'invoices.id')->sum('payments.amount');
@@ -450,7 +467,7 @@ class NurseController extends Controller
 
     public function emarList(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $query = MedicationAdministration::with(['patient:id,name,mrn', 'nurse:id,name'])
             ->when($request->filled('patient_id'), fn ($q) => $q->where('patient_id', $request->patient_id))
@@ -480,7 +497,7 @@ class NurseController extends Controller
 
     public function emarStore(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -513,7 +530,7 @@ class NurseController extends Controller
 
     public function emarAdminister(Request $request, MedicationAdministration $mar)
     {
-        $nurse = $this->authNurse($request);
+        $nurse = $this->authNurseOrDoctor($request);
 
         $request->validate([
             'status' => ['required', 'in:administered,missed,refused,held'],
@@ -532,7 +549,7 @@ class NurseController extends Controller
 
     public function emarDestroy(Request $request, MedicationAdministration $mar)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $mar->delete();
 
         return response()->json(['message' => 'Medication order deleted.']);
@@ -544,7 +561,7 @@ class NurseController extends Controller
 
     public function vitalsList(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $query = Vital::with(['patient:id,name,mrn', 'recordedBy:id,name'])
             ->when($request->filled('patient_id'), fn ($q) => $q->where('patient_id', $request->patient_id))
@@ -579,7 +596,7 @@ class NurseController extends Controller
 
     public function vitalsStore(Request $request)
     {
-        $nurse = $this->authNurse($request);
+        $nurse = $this->authNurseOrDoctor($request);
 
         $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -608,7 +625,7 @@ class NurseController extends Controller
 
     public function vitalsHistory(Request $request, Patient $patient)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $vitals = Vital::where('patient_id', $patient->id)->orderByDesc('recorded_at')->take(50)->get()
             ->map(fn (Vital $v) => $this->vitalPayload($v));
@@ -618,7 +635,7 @@ class NurseController extends Controller
 
     public function vitalsDestroy(Request $request, Vital $vital)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $vital->delete();
 
         return response()->json(['message' => 'Vital record deleted.']);
@@ -630,7 +647,7 @@ class NurseController extends Controller
 
     public function nursingNotesList(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $query = NursingNote::with(['patient:id,name,mrn', 'writtenBy:id,name'])
             ->when($request->filled('patient_id'), fn ($q) => $q->where('patient_id', $request->patient_id))
@@ -655,7 +672,7 @@ class NurseController extends Controller
 
     public function nursingNoteStore(Request $request)
     {
-        $nurse = $this->authNurse($request);
+        $nurse = $this->authNurseOrDoctor($request);
 
         $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -681,7 +698,7 @@ class NurseController extends Controller
 
     public function nursingNoteUpdate(Request $request, NursingNote $note)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $request->validate([
             'note_type' => ['required', 'in:nursing,progress,handover,assessment,discharge_summary'],
@@ -697,7 +714,7 @@ class NurseController extends Controller
 
     public function nursingNoteDestroy(Request $request, NursingNote $note)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $note->delete();
 
         return response()->json(['message' => 'Note deleted.']);
@@ -981,7 +998,7 @@ class NurseController extends Controller
 
     public function otList(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $items = OtSchedule::with(['patient:id,name,mrn', 'surgeon:id,name'])
             ->when($request->filled('patient_id'), fn ($q) => $q->where('patient_id', $request->patient_id))
@@ -1016,7 +1033,7 @@ class NurseController extends Controller
 
     public function otStore(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -1047,7 +1064,7 @@ class NurseController extends Controller
 
     public function otDetail(Request $request, OtSchedule $ot)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $ot->load(['patient', 'surgeon', 'anaesthetist', 'scrubNurse']);
 
         return response()->json([...$this->otPayload($ot), 'pre_op_notes' => $ot->pre_op_notes, 'post_op_notes' => $ot->post_op_notes, 'complications' => $ot->complications]);
@@ -1055,7 +1072,7 @@ class NurseController extends Controller
 
     public function otStart(Request $request, OtSchedule $ot)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $ot->update(['status' => 'in_progress', 'actual_start' => now()]);
 
         return response()->json(['message' => 'Surgery started.']);
@@ -1063,7 +1080,7 @@ class NurseController extends Controller
 
     public function otComplete(Request $request, OtSchedule $ot)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $request->validate(['post_op_notes' => ['nullable', 'string', 'max:2000'], 'complications' => ['nullable', 'string', 'max:2000']]);
 
         $ot->update([
@@ -1078,7 +1095,7 @@ class NurseController extends Controller
 
     public function otDestroy(Request $request, OtSchedule $ot)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $ot->update(['status' => 'cancelled']);
 
         return response()->json(['message' => 'OT schedule cancelled.']);
@@ -1090,7 +1107,7 @@ class NurseController extends Controller
 
     public function icuList(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $items = IcuChart::with(['patient:id,name,mrn', 'recordedBy:id,name'])
             ->when($request->filled('patient_id'), fn ($q) => $q->where('patient_id', $request->patient_id))
@@ -1136,7 +1153,7 @@ class NurseController extends Controller
 
     public function icuStore(Request $request)
     {
-        $nurse = $this->authNurse($request);
+        $nurse = $this->authNurseOrDoctor($request);
 
         $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -1176,7 +1193,7 @@ class NurseController extends Controller
 
     public function icuDetail(Request $request, IcuChart $chart)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $chart->load(['patient', 'recordedBy']);
 
         return response()->json($this->icuPayload($chart));
@@ -1184,7 +1201,7 @@ class NurseController extends Controller
 
     public function icuDestroy(Request $request, IcuChart $chart)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $chart->delete();
 
         return response()->json(['message' => 'ICU chart deleted.']);
@@ -1198,7 +1215,7 @@ class NurseController extends Controller
 
     public function bloodBankIndex(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $totalUnits = BloodUnit::count();
         $byGroup = collect(self::BLOOD_GROUPS)->mapWithKeys(fn ($g) => [$g => BloodUnit::where('blood_group', $g)->where('status', 'available')->count()]);
@@ -1228,7 +1245,7 @@ class NurseController extends Controller
 
     public function bloodBankStore(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $request->validate([
             'blood_group' => ['required', Rule::in(self::BLOOD_GROUPS)],
@@ -1249,7 +1266,7 @@ class NurseController extends Controller
 
     public function bloodBankTransfusions(Request $request)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $items = BloodTransfusion::with(['bloodUnit:id,unit_no,blood_group', 'administeredBy:id,name'])
             ->when($request->filled('patient_id'), fn ($q) => $q->where('patient_id', $request->patient_id))
@@ -1274,7 +1291,7 @@ class NurseController extends Controller
 
     public function bloodBankTransfuse(Request $request, BloodUnit $unit)
     {
-        $nurse = $this->authNurse($request);
+        $nurse = $this->authNurseOrDoctor($request);
 
         $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -1301,7 +1318,7 @@ class NurseController extends Controller
 
     public function bloodBankUpdateStatus(Request $request, BloodUnit $unit)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
 
         $request->validate([
             'status' => ['required', 'in:available,reserved,transfused,expired,discarded'],
@@ -1318,7 +1335,7 @@ class NurseController extends Controller
 
     public function bloodBankDestroy(Request $request, BloodUnit $unit)
     {
-        $this->authNurse($request);
+        $this->authNurseOrDoctor($request);
         $unit->delete();
 
         return response()->json(['message' => 'Blood unit deleted.']);
@@ -1330,7 +1347,7 @@ class NurseController extends Controller
 
     public function consentFormsList(Request $request)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
 
         $items = ConsentForm::with(['patient:id,name,mrn', 'createdBy:id,name'])
             ->latest()
@@ -1364,7 +1381,7 @@ class NurseController extends Controller
 
     public function consentFormStore(Request $request)
     {
-        $nurse = $this->authNurseOrReceptionist($request);
+        $nurse = $this->authWardTeam($request);
 
         $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -1400,7 +1417,7 @@ class NurseController extends Controller
 
     public function consentFormSign(Request $request, ConsentForm $consentForm)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
 
         $request->validate([
             'patient_signature' => ['required', 'string', 'max:2000000'],
@@ -1418,7 +1435,7 @@ class NurseController extends Controller
 
     public function consentFormUpdateStatus(Request $request, ConsentForm $consentForm)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
         $request->validate(['status' => ['required', 'in:pending,signed,declined']]);
 
         $consentForm->update(['status' => $request->status]);
@@ -1428,7 +1445,7 @@ class NurseController extends Controller
 
     public function consentFormDestroy(Request $request, ConsentForm $consentForm)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
         $consentForm->delete();
 
         return response()->json(['message' => 'Consent form deleted.']);
@@ -1440,7 +1457,7 @@ class NurseController extends Controller
 
     public function erList(Request $request)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
 
         $waitingCount = ErRegistration::where('status', 'waiting')->count();
         $underTreatment = ErRegistration::where('status', 'under_treatment')->count();
@@ -1485,7 +1502,7 @@ class NurseController extends Controller
 
     public function erStore(Request $request)
     {
-        $nurse = $this->authNurseOrReceptionist($request);
+        $nurse = $this->authWardTeam($request);
 
         $request->validate([
             'patient_id' => ['nullable', 'exists:patients,id'],
@@ -1512,7 +1529,7 @@ class NurseController extends Controller
 
     public function erDetail(Request $request, ErRegistration $er)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
         $er->load(['patient', 'triagedBy', 'attendingDoctor']);
 
         return response()->json($this->erPayload($er));
@@ -1520,7 +1537,7 @@ class NurseController extends Controller
 
     public function erUpdate(Request $request, ErRegistration $er)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
         $request->validate([
             'attending_doctor_id' => ['nullable', 'exists:doctors,id'],
             'status' => ['required', 'in:waiting,under_treatment,admitted,discharged,transferred,expired'],
@@ -1535,7 +1552,7 @@ class NurseController extends Controller
 
     public function erTriage(Request $request, ErRegistration $er)
     {
-        $nurse = $this->authNurseOrReceptionist($request);
+        $nurse = $this->authWardTeam($request);
         $request->validate(['triage_level' => ['required', 'in:red,yellow,green,black']]);
 
         $er->update(['triage_level' => $request->triage_level, 'triaged_by' => $nurse->id, 'triage_time' => now(), 'status' => 'under_treatment']);
@@ -1545,7 +1562,7 @@ class NurseController extends Controller
 
     public function erDischarge(Request $request, ErRegistration $er)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
         $request->validate(['status' => ['required', 'in:discharged,admitted,transferred,expired'], 'notes' => ['nullable', 'string', 'max:2000']]);
 
         $er->update(['status' => $request->status, 'discharge_time' => now(), 'notes' => $request->notes ?? $er->notes]);
@@ -1555,7 +1572,7 @@ class NurseController extends Controller
 
     public function erDestroy(Request $request, ErRegistration $er)
     {
-        $this->authNurseOrReceptionist($request);
+        $this->authWardTeam($request);
         $er->delete();
 
         return response()->json(['message' => 'ER record deleted.']);

@@ -33,15 +33,18 @@ class LabAssistantController extends Controller
     }
 
     /**
-     * Lab Tests catalog CRUD and Lab Orders list/create/detail are shared
-     * with the receptionist role on the web (same `role:...|lab_assistant|
-     * receptionist` middleware) — used by both the lab and receptionist
-     * mobile apps. Entering results stays lab_assistant-only — the web
-     * explicitly excludes receptionist from clinical data entry.
+     * Lab Tests catalog CRUD and Lab Orders list/create/detail, shared on
+     * the web between the lab assistant, the receptionist and the doctor
+     * (`role:...|lab_assistant|doctor|receptionist`) — the doctor is the
+     * one ordering the test in the first place.
+     *
+     * Entering results stays on [authLabAssistant]: the web excludes the
+     * receptionist from clinical data entry, and a result belongs to
+     * whoever ran the sample.
      */
-    private function authLabAssistantOrReceptionist(Request $request): User
+    private function authLabDesk(Request $request): User
     {
-        abort_unless($request->user()->hasAnyRole(['lab_assistant', 'receptionist']), 403, 'This account cannot access this feature.');
+        abort_unless($request->user()->hasAnyRole(['lab_assistant', 'receptionist', 'doctor']), 403, 'This account cannot access this feature.');
 
         return $request->user();
     }
@@ -68,7 +71,7 @@ class LabAssistantController extends Controller
 
     public function labTests(Request $request)
     {
-        $this->authLabAssistantOrReceptionist($request);
+        $this->authLabDesk($request);
 
         $tests = LabTest::orderBy('test_name')->get()->map(fn (LabTest $t) => $this->labTestPayload($t));
 
@@ -94,7 +97,7 @@ class LabAssistantController extends Controller
 
     public function labTestStore(Request $request)
     {
-        $this->authLabAssistantOrReceptionist($request);
+        $this->authLabDesk($request);
 
         $validated = $request->validate([
             'test_name' => ['required', 'string', 'min:2', 'max:255'],
@@ -115,7 +118,7 @@ class LabAssistantController extends Controller
 
     public function labTestUpdate(Request $request, LabTest $labTest)
     {
-        $this->authLabAssistantOrReceptionist($request);
+        $this->authLabDesk($request);
 
         $validated = $request->validate([
             'test_name' => ['required', 'string', 'min:2', 'max:255'],
@@ -136,7 +139,7 @@ class LabAssistantController extends Controller
 
     public function labTestDestroy(Request $request, LabTest $labTest)
     {
-        $this->authLabAssistantOrReceptionist($request);
+        $this->authLabDesk($request);
         $labTest->delete();
 
         return response()->json(['message' => 'Lab test deleted.']);
@@ -148,7 +151,7 @@ class LabAssistantController extends Controller
 
     public function labOrders(Request $request)
     {
-        $this->authLabAssistantOrReceptionist($request);
+        $this->authLabDesk($request);
 
         $orders = LabOrder::with(['patient:id,name,mrn', 'doctor:id,name'])
             ->withCount('items')
@@ -174,7 +177,7 @@ class LabAssistantController extends Controller
 
     public function labOrderStore(Request $request)
     {
-        $this->authLabAssistantOrReceptionist($request);
+        $this->authLabDesk($request);
 
         $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -214,7 +217,7 @@ class LabAssistantController extends Controller
 
     public function labOrderDetail(Request $request, LabOrder $labOrder)
     {
-        $this->authLabAssistantOrReceptionist($request);
+        $this->authLabDesk($request);
         $labOrder->load(['patient', 'doctor', 'items.labTest', 'items.result']);
 
         return response()->json([

@@ -38,6 +38,20 @@ class ReceptionistController extends Controller
         return $request->user();
     }
 
+    /**
+     * Radiology, Referrals and the OPD queue. The web puts the doctor on
+     * all three (`role:...|doctor|receptionist`) — a doctor refers a
+     * patient onward, orders imaging and reads the findings, and calls the
+     * next patient in. The mobile API had them behind the receptionist-only
+     * guard, so none of it was reachable from a doctor's account.
+     */
+    private function authReceptionistOrDoctor(Request $request): User
+    {
+        abort_unless($request->user()->hasAnyRole(['receptionist', 'doctor']), 403, 'This account cannot access this feature.');
+
+        return $request->user();
+    }
+
     private function patientSearch($query, ?string $keyword)
     {
         if (!$keyword) {
@@ -408,7 +422,7 @@ class ReceptionistController extends Controller
 
     public function referrals(Request $request)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
 
         $referrals = Referral::with(['patient:id,name,mrn', 'referredBy:id,name', 'referredTo:id,name'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
@@ -435,7 +449,7 @@ class ReceptionistController extends Controller
 
     public function referralStore(Request $request)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
 
         $validated = $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -458,7 +472,7 @@ class ReceptionistController extends Controller
 
     public function referralUpdateStatus(Request $request, Referral $referral)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
         $request->validate(['status' => ['required', 'in:pending,accepted,completed,cancelled']]);
 
         $referral->update(['status' => $request->status]);
@@ -468,7 +482,7 @@ class ReceptionistController extends Controller
 
     public function referralDestroy(Request $request, Referral $referral)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
         $referral->delete();
 
         return response()->json(['message' => 'Referral deleted.']);
@@ -480,7 +494,7 @@ class ReceptionistController extends Controller
 
     public function opdQueue(Request $request)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
 
         $tokens = OpdToken::with(['patient:id,name,mrn', 'doctor:id,name'])
             ->whereDate('token_date', today())
@@ -513,7 +527,7 @@ class ReceptionistController extends Controller
 
     public function opdQueueStore(Request $request)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
         $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
             'doctor_id' => ['required', 'exists:doctors,id'],
@@ -536,7 +550,7 @@ class ReceptionistController extends Controller
 
     public function opdQueueCallNext(Request $request, Doctor $doctor)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
 
         $current = OpdToken::whereDate('token_date', today())->where('doctor_id', $doctor->id)->where('status', 'in_consultation')->first();
         if ($current) {
@@ -555,7 +569,7 @@ class ReceptionistController extends Controller
 
     public function opdQueueUpdateStatus(Request $request, OpdToken $token)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
         $request->validate(['status' => ['required', 'in:waiting,in_consultation,completed,skipped,cancelled']]);
 
         $updates = ['status' => $request->status];
@@ -569,7 +583,7 @@ class ReceptionistController extends Controller
 
     public function opdQueueDestroy(Request $request, OpdToken $token)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
         $token->delete();
 
         return response()->json(['message' => 'Token removed.']);
@@ -581,7 +595,7 @@ class ReceptionistController extends Controller
 
     public function radiologyOrders(Request $request)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
 
         $orders = RadiologyOrder::with(['patient:id,name,mrn', 'doctor:id,name'])
             ->when($request->filled('patient_id'), fn ($q) => $q->where('patient_id', $request->patient_id))
@@ -627,7 +641,7 @@ class ReceptionistController extends Controller
 
     public function radiologyStore(Request $request)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
 
         $validated = $request->validate([
             'patient_id' => ['required', 'exists:patients,id'],
@@ -647,14 +661,14 @@ class ReceptionistController extends Controller
 
     public function radiologyDetail(Request $request, RadiologyOrder $order)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
 
         return response()->json($this->radiologyPayload($order));
     }
 
     public function radiologyUpdate(Request $request, RadiologyOrder $order)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
 
         $validated = $request->validate([
             'modality' => ['required', 'string', 'max:255'],
@@ -673,7 +687,7 @@ class ReceptionistController extends Controller
 
     public function radiologyEnterFindings(Request $request, RadiologyOrder $order)
     {
-        $receptionist = $this->authReceptionist($request);
+        $receptionist = $this->authReceptionistOrDoctor($request);
 
         $validated = $request->validate([
             'findings' => ['nullable', 'string', 'max:5000'],
@@ -693,7 +707,7 @@ class ReceptionistController extends Controller
 
     public function radiologyDestroy(Request $request, RadiologyOrder $order)
     {
-        $this->authReceptionist($request);
+        $this->authReceptionistOrDoctor($request);
         $order->delete();
 
         return response()->json(['message' => 'Radiology order deleted.']);
