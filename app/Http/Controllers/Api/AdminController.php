@@ -150,7 +150,12 @@ class AdminController extends Controller
                 'id' => $i->id,
                 'invoice_no' => $i->invoice_no,
                 'patient_name' => $i->patient?->name,
-                'invoice_date' => $i->invoice_date,
+                // Cast to a Carbon date on the model, so without this it
+                // serialises as a full ISO timestamp and the app shows
+                // "2026-09-19T00:00:00.000000Z" where a date belongs.
+                'invoice_date' => $i->invoice_date instanceof \DateTimeInterface
+                    ? $i->invoice_date->format('Y-m-d')
+                    : $i->invoice_date,
                 'status' => $i->status,
                 'total' => (float) $i->total,
                 'paid_amount' => (float) $i->paid_amount,
@@ -183,7 +188,9 @@ class AdminController extends Controller
                 'current_stock' => (int) $d->current_stock,
                 'min_stock_level' => (int) $d->min_stock_level,
                 'unit_price' => (float) $d->unit_price,
-                'expiry_date' => $d->expiry_date,
+                'expiry_date' => $d->expiry_date instanceof \DateTimeInterface
+                    ? $d->expiry_date->format('Y-m-d')
+                    : $d->expiry_date,
             ]),
         ]);
     }
