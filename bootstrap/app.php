@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Every API route, authenticated or not. The login group keeps its
+        // own tighter `api-login` limiter on top of this.
+        $middleware->api(prepend: ['throttle:api']);
+
         $middleware->web(LocaleMiddleware::class);
         $middleware->web(\App\Http\Middleware\CheckSubscription::class);
         $middleware->web(\App\Http\Middleware\RequirePasswordChange::class);

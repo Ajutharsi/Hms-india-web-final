@@ -160,10 +160,15 @@ class AdminHrController extends Controller
         $admin = $this->authAdmin($request);
         abort_unless($leave->status === 'pending', 422, 'This request has already been decided.');
 
+        // Optional, but still validated: this was the one write in the
+        // admin API taking a field straight off the request, so an
+        // over-long remark reached the column instead of the user.
+        $validated = $request->validate(['remarks' => ['nullable', 'string', 'max:500']]);
+
         $leave->update([
             'status' => 'approved',
             'approved_by' => $admin->id,
-            'remarks' => $request->input('remarks'),
+            'remarks' => $validated['remarks'] ?? null,
         ]);
 
         ActivityLog::log('updated', 'HR', "Leave #{$leave->id} approved from the mobile app");

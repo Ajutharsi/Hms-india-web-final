@@ -41,6 +41,22 @@ class AppServiceProvider extends ServiceProvider
             return [Limit::perMinute(5)->by($key), Limit::perMinute(30)->by($request->ip())];
         });
 
+        // Everything behind a token. Until this, one stolen token could
+        // pull the whole patient database as fast as the server would
+        // answer — 70 requests in a row drew no complaint at all.
+        //
+        // 120 a minute is well clear of ordinary use (a screen load is one
+        // or two requests, and a person cannot open sixty screens a
+        // minute) while making a bulk scrape take hours instead of
+        // seconds. Keyed by the signed-in user so one account cannot spend
+        // a whole hospital's allowance, and by IP for anything that gets
+        // this far unauthenticated.
+        RateLimiter::for('api', function (Request $request) {
+            return $request->user()
+                ? Limit::perMinute(120)->by('user:' . $request->user()->id)
+                : Limit::perMinute(30)->by('ip:' . $request->ip());
+        });
+
         Vite::useStyleTagAttributes(function (?string $src, string $url, ?array $chunk, ?array $manifest) {
             if ($src !== null) {
                 return [

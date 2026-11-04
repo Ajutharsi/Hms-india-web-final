@@ -50,7 +50,15 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Seven days. A bearer token that never expires means one copied off
+    // a lost phone, or out of a log, works until somebody notices and
+    // revokes it by hand — and with transport still plain HTTP there are
+    // several ways to get a copy. Seven days keeps a nurse signed in
+    // across a normal rota while putting a floor under the damage.
+    //
+    // The app already sends an expired session back to the login screen,
+    // both on start-up and mid-session.
+    'expiration' => 60 * 24 * 7,
 
     /*
     |--------------------------------------------------------------------------
