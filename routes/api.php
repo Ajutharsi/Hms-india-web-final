@@ -216,6 +216,9 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
 
         Route::get('/activity-log', [AdminController::class, 'activityLog']);
 
+        Route::get('/profile', [AdminController::class, 'profile']);
+        Route::post('/profile', [AdminController::class, 'updateProfile']);
+
         Route::get('/doctors', [AdminDirectoryController::class, 'doctors']);
         Route::post('/doctors', [AdminDirectoryController::class, 'doctorStore']);
         Route::get('/doctors/{doctor}', [AdminDirectoryController::class, 'doctorDetail']);

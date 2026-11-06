@@ -16,7 +16,9 @@ use App\Models\Patient;
 use App\Models\User;
 use App\Models\Ward;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * The administrator's own endpoints: the numbers, the hospital's
@@ -292,6 +294,60 @@ class AdminController extends Controller
         $department->delete();
 
         return response()->json(['message' => 'Department deleted.']);
+    }
+
+    // ------------------------------------------------------------- profile
+
+    /**
+     * The administrator's own account. Every other role has had one of
+     * these; the admin did not, which mattered more than it looks: when a
+     * super admin forces a password change, every endpoint answers 403
+     * until the password is changed, and the only ones still open are the
+     * roles' own profile routes. Without this an administrator in that
+     * state had nowhere to change it from the app.
+     */
+    public function profile(Request $request)
+    {
+        return response()->json(['user' => $this->profilePayload($this->authAdmin($request))]);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $admin = $this->authAdmin($request);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'min:2', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($admin->id)],
+            'phone' => ['nullable', 'string', 'max:15', 'regex:/^[0-9+\-\s()]+$/'],
+            'current_password' => ['nullable', 'required_with:password', 'current_password'],
+            'password' => ['nullable', 'confirmed', Password::defaults()],
+        ]);
+
+        $admin->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+        ]);
+
+        // Clearing the flag is the point of the password branch: it is what
+        // lets the rest of the API answer again.
+        if (!empty($validated['password'])) {
+            $admin->update(['password' => Hash::make($validated['password']), 'must_change_password' => false]);
+        }
+
+        return response()->json(['message' => 'Profile saved.', 'user' => $this->profilePayload($admin->fresh())]);
+    }
+
+    private function profilePayload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->roles->first()?->name,
+            'must_change_password' => (bool) $user->must_change_password,
+        ];
     }
 
     // -------------------------------------------------------- activity log
