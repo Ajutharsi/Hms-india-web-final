@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\Ward;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -321,7 +322,17 @@ class AdminController extends Controller
             'phone' => ['nullable', 'string', 'max:15', 'regex:/^[0-9+\-\s()]+$/'],
             'current_password' => ['nullable', 'required_with:password', 'current_password'],
             'password' => ['nullable', 'confirmed', Password::defaults()],
+            'profile_photo' => ['nullable', 'image', 'max:2048'],
         ]);
+
+        // Mirrors the other roles' profile endpoint, so the app can use
+        // one screen for all of them.
+        if ($request->hasFile('profile_photo')) {
+            if ($admin->profile_photo) {
+                Storage::disk('public')->delete($admin->profile_photo);
+            }
+            $admin->update(['profile_photo' => $request->file('profile_photo')->store('profile-photos', 'public')]);
+        }
 
         $admin->update([
             'name' => $validated['name'],
@@ -346,6 +357,8 @@ class AdminController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'role' => $user->roles->first()?->name,
+            'profile_photo_url' => $user->profile_photo_url,
+            'department' => $user->department?->name,
             'must_change_password' => (bool) $user->must_change_password,
         ];
     }
