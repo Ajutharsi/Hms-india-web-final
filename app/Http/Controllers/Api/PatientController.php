@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Appointment;
+use App\Models\Vital;
+use App\Models\Consultation;
+use App\Models\Admission;
 use App\Models\Doctor;
 use App\Models\Invoice;
 use App\Models\LabOrder;
@@ -13,6 +16,7 @@ use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -372,6 +376,85 @@ class PatientController extends Controller
         });
 
         return response()->json(['message' => 'Appointment moved.']);
+    }
+
+    /**
+     * Everything the hospital holds about this patient, in one place.
+     *
+     * The app could already show appointments, prescriptions, lab
+     * results and bills on their own screens. What a patient could not
+     * see was the clinical side: what was found at a consultation, what
+     * they are allergic to, what happened during a stay.
+     *
+     * Read-only by design -- a patient may see their record, not edit it.
+     */
+    public function healthRecords(Request $request)
+    {
+        $patient = $this->authPatient($request);
+
+        $consultations = Consultation::with('doctor:id,name')
+            ->where('patient_id', $patient->id)
+            ->latest('id')
+            ->limit(50)
+            ->get();
+
+        $stays = Admission::with(['ward:id,name', 'doctor:id,name'])
+            ->where('patient_id', $patient->id)
+            ->latest('admission_date')
+            ->limit(20)
+            ->get();
+
+        $vitals = Vital::where('patient_id', $patient->id)
+            ->latest('recorded_at')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'patient' => [
+                'name' => $patient->name,
+                'mrn' => $patient->mrn,
+                'blood_group' => $patient->blood_group,
+                'gender' => $patient->gender,
+            ],
+            // Allergies lead: it is the part a patient is asked to
+            // repeat at every desk they visit.
+            'allergies' => $patient->allergies()->get()->map(fn ($a) => [
+                'allergen' => $a->allergen,
+                'type' => $a->type,
+                'severity' => $a->severity,
+                'reaction' => $a->reaction,
+            ])->all(),
+            'problems' => $patient->problems()->get()->map(fn ($p) => [
+                'problem_name' => $p->problem_name,
+                'status' => $p->status,
+                'onset_date' => optional($p->onset_date)->format('Y-m-d') ?? (string) $p->onset_date,
+            ])->all(),
+            'consultations' => $consultations->map(fn ($c) => [
+                'date' => optional($c->created_at)->format('Y-m-d'),
+                'doctor_name' => $c->doctor?->name,
+                'chief_complaint' => $c->chief_complaint,
+                'diagnosis' => $c->diagnosis,
+                'treatment_plan' => $c->treatment_plan,
+            ])->all(),
+            'stays' => $stays->map(fn ($a) => [
+                'admission_no' => $a->admission_no,
+                'ward_name' => $a->ward?->name,
+                'doctor_name' => $a->doctor?->name,
+                'admission_date' => $a->admission_date ? Carbon::parse($a->admission_date)->format('Y-m-d') : null,
+                'discharge_date' => $a->discharge_date ? Carbon::parse($a->discharge_date)->format('Y-m-d') : null,
+                'status' => $a->status,
+                'reason' => $a->admission_reason,
+                'discharge_notes' => $a->discharge_notes,
+            ])->all(),
+            'vitals' => $vitals->map(fn ($v) => [
+                'recorded_at' => optional($v->recorded_at)->format('Y-m-d H:i'),
+                'blood_pressure' => $v->blood_pressure,
+                'temperature' => $v->temperature,
+                'pulse_rate' => $v->pulse_rate,
+                'spo2' => $v->spo2,
+                'weight' => $v->weight,
+            ])->all(),
+        ]);
     }
 
     public function profile(Request $request)

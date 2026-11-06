@@ -10,9 +10,11 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\DischargeSummaryController;
 use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\Api\DoctorOrderController;
 use App\Http\Controllers\Api\EmrController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\NursingAssessmentController;
+use App\Http\Controllers\Api\ProgressNoteController;
 use App\Http\Controllers\Api\LabAssistantController;
 use App\Http\Controllers\Api\NurseController;
 use App\Http\Controllers\Api\PatientController;
@@ -55,6 +57,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::get('/lab-results', [PatientController::class, 'labResults']);
         Route::get('/invoices', [PatientController::class, 'invoices']);
         Route::post('/invoices/{invoice}/request-help', [PatientController::class, 'requestInvoiceHelp']);
+        Route::get('/health-records', [PatientController::class, 'healthRecords']);
         Route::get('/profile', [PatientController::class, 'profile']);
         Route::post('/profile', [PatientController::class, 'updateProfile']);
     });
@@ -177,6 +180,13 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
 
         Route::get('/icd10', [DoctorController::class, 'icd10Search']);
 
+        // Everything a doctor orders for a patient, in one place.
+        Route::get('/orders/{patient}', [DoctorOrderController::class, 'index']);
+        Route::post('/orders/{patient}/lab', [DoctorOrderController::class, 'storeLab']);
+        Route::post('/orders/{patient}/radiology', [DoctorOrderController::class, 'storeRadiology']);
+        Route::post('/orders/{patient}/medicines', [DoctorOrderController::class, 'storeMedicines']);
+        Route::post('/orders/{patient}/diet', [DoctorOrderController::class, 'storeDiet']);
+
         Route::get('/schedule', [DoctorController::class, 'schedule']);
         Route::post('/schedule', [DoctorController::class, 'scheduleStore']);
         Route::put('/schedule/{schedule}', [DoctorController::class, 'scheduleUpdate']);
@@ -184,6 +194,14 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
 
         Route::get('/profile', [DoctorController::class, 'profile']);
         Route::post('/profile', [DoctorController::class, 'updateProfile']);
+    });
+
+    // The ward round: who has not been seen today, and the note.
+    Route::prefix('rounds')->group(function () {
+        Route::get('/', [ProgressNoteController::class, 'index']);
+        Route::get('/{admission}', [ProgressNoteController::class, 'show']);
+        Route::post('/{admission}/notes', [ProgressNoteController::class, 'store']);
+        Route::delete('/notes/{note}', [ProgressNoteController::class, 'destroy']);
     });
 
     // The document a patient leaves with, gathered from the stay.
