@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminWardController;
 use App\Http\Controllers\Api\AdminDirectoryController;
 use App\Http\Controllers\Api\AdminHrController;
 use App\Http\Controllers\Api\AdminInventoryController;
@@ -277,6 +278,16 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::put('/leaves/{leave}/approve', [AdminHrController::class, 'leaveApprove']);
         Route::put('/leaves/{leave}/reject', [AdminHrController::class, 'leaveReject']);
         Route::delete('/leaves/{leave}', [AdminHrController::class, 'leaveDestroy']);
+
+        // Wards and beds -- a web-only page until now.
+        Route::get('/wards', [AdminWardController::class, 'index']);
+        Route::post('/wards', [AdminWardController::class, 'store']);
+        Route::get('/wards/{ward}', [AdminWardController::class, 'show']);
+        Route::put('/wards/{ward}', [AdminWardController::class, 'update']);
+        Route::delete('/wards/{ward}', [AdminWardController::class, 'destroy']);
+        Route::post('/wards/{ward}/beds', [AdminWardController::class, 'storeBed']);
+        Route::put('/beds/{bed}', [AdminWardController::class, 'updateBed']);
+        Route::delete('/beds/{bed}', [AdminWardController::class, 'destroyBed']);
 
         Route::get('/notifications', [AdminHrController::class, 'notifications']);
         Route::get('/notification-templates', [AdminHrController::class, 'templates']);
