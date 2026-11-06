@@ -48,6 +48,9 @@ class PatientController extends Controller
             ->map(fn (Appointment $a) => [
                 'id' => $a->id,
                 'appointment_id' => $a->appointment_id,
+                // Needed to re-offer that doctor's free slots when the
+                // patient moves the booking.
+                'doctor_id' => $a->doctor_id,
                 'doctor_name' => $a->doctor?->name,
                 'doctor_specialization' => $a->doctor?->specialization,
                 'date' => $a->appointment_date,
@@ -317,6 +320,58 @@ class PatientController extends Controller
         $appointment->update(['status' => 'cancelled']);
 
         return response()->json(['message' => 'Appointment cancelled.']);
+    }
+
+    /**
+     * Move a booking to another slot.
+     *
+     * The app could cancel and book again, which loses the place in the
+     * queue and leaves two rows in the patient's history for one visit.
+     * The same slot check as booking applies, against everyone else's
+     * appointments but not this one.
+     */
+    public function rescheduleAppointment(Request $request, Appointment $appointment)
+    {
+        $patient = $this->authPatient($request);
+        abort_if($appointment->patient_id !== $patient->id, 403);
+
+        if ($appointment->status !== 'scheduled') {
+            throw ValidationException::withMessages([
+                'status' => ['Only an upcoming, scheduled appointment can be moved.'],
+            ]);
+        }
+
+        $data = $request->validate([
+            'appointment_date' => ['required', 'date', 'after_or_equal:today'],
+            'appointment_time' => ['required', 'date_format:H:i'],
+        ]);
+
+        $conflict = Appointment::where('doctor_id', $appointment->doctor_id)
+            ->whereDate('appointment_date', $data['appointment_date'])
+            ->where('appointment_time', $data['appointment_time'])
+            ->whereNotIn('status', ['cancelled', 'no_show'])
+            ->where('id', '!=', $appointment->id)
+            ->exists();
+
+        if ($conflict) {
+            throw ValidationException::withMessages([
+                'appointment_time' => ['That time slot is taken -- please pick another.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($appointment, $data) {
+            $appointment->update([
+                'appointment_date' => $data['appointment_date'],
+                'appointment_time' => $data['appointment_time'],
+            ]);
+
+            // An OP visit carries a queue token for its day; moving the
+            // visit has to move the token with it.
+            OpdToken::where('appointment_id', $appointment->id)
+                ->update(['token_date' => $data['appointment_date']]);
+        });
+
+        return response()->json(['message' => 'Appointment moved.']);
     }
 
     public function profile(Request $request)

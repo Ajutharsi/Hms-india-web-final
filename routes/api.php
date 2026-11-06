@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminSupplierController;
 use App\Http\Controllers\Api\AdminWardController;
 use App\Http\Controllers\Api\AdminDirectoryController;
 use App\Http\Controllers\Api\AdminHrController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\EmrController;
+use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\LabAssistantController;
 use App\Http\Controllers\Api\NurseController;
 use App\Http\Controllers\Api\PatientController;
@@ -44,6 +46,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::get('/appointments', [PatientController::class, 'appointments']);
         Route::post('/appointments', [PatientController::class, 'bookAppointment']);
         Route::post('/appointments/{appointment}/cancel', [PatientController::class, 'cancelAppointment']);
+        Route::put('/appointments/{appointment}/reschedule', [PatientController::class, 'rescheduleAppointment']);
         Route::get('/doctors', [PatientController::class, 'doctors']);
         Route::get('/slots', [PatientController::class, 'slots']);
         Route::get('/prescriptions', [PatientController::class, 'prescriptions']);
@@ -172,12 +175,31 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
 
         Route::get('/icd10', [DoctorController::class, 'icd10Search']);
 
+        Route::get('/schedule', [DoctorController::class, 'schedule']);
+        Route::post('/schedule', [DoctorController::class, 'scheduleStore']);
+        Route::put('/schedule/{schedule}', [DoctorController::class, 'scheduleUpdate']);
+        Route::delete('/schedule/{schedule}', [DoctorController::class, 'scheduleDestroy']);
+
         Route::get('/profile', [DoctorController::class, 'profile']);
         Route::post('/profile', [DoctorController::class, 'updateProfile']);
     });
 
     // The patient's medical record -- shared by the clinical roles, the
     // way the web's EMR pages are.
+    // What the signed-in account can see about itself, whatever its role.
+    Route::prefix('me')->group(function () {
+        Route::get('/attendance', [MeController::class, 'attendance']);
+        Route::get('/leaves', [MeController::class, 'leaves']);
+        Route::post('/leaves', [MeController::class, 'leaveStore']);
+        Route::delete('/leaves/{leave}', [MeController::class, 'leaveDestroy']);
+        Route::get('/notifications', [MeController::class, 'notifications']);
+        Route::post('/notifications/read', [MeController::class, 'notificationsRead']);
+
+        // Not /search: routes/web.php already serves an api/search for
+        // the web app's own search box, and it wins the URL.
+        Route::get('/search', [MeController::class, 'search']);
+    });
+
     Route::prefix('emr')->group(function () {
         Route::get('/patients/{patient}', [EmrController::class, 'show']);
 
@@ -278,6 +300,12 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::put('/leaves/{leave}/approve', [AdminHrController::class, 'leaveApprove']);
         Route::put('/leaves/{leave}/reject', [AdminHrController::class, 'leaveReject']);
         Route::delete('/leaves/{leave}', [AdminHrController::class, 'leaveDestroy']);
+
+        // The vendor master behind purchase orders.
+        Route::get('/suppliers', [AdminSupplierController::class, 'index']);
+        Route::post('/suppliers', [AdminSupplierController::class, 'store']);
+        Route::put('/suppliers/{supplier}', [AdminSupplierController::class, 'update']);
+        Route::delete('/suppliers/{supplier}', [AdminSupplierController::class, 'destroy']);
 
         // Wards and beds -- a web-only page until now.
         Route::get('/wards', [AdminWardController::class, 'index']);

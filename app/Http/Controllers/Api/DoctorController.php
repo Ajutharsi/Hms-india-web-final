@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Appointment;
 use App\Models\Consultation;
 use App\Models\Doctor;
+use App\Models\DoctorSchedule;
 use App\Models\Icd10Code;
 use App\Models\LabOrder;
 use App\Models\OpdToken;
@@ -469,5 +470,108 @@ class DoctorController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Profile updated successfully!']);
+    }
+
+    // ------------------------------------------------------- my schedule
+
+    /**
+     * The doctor's own clinic hours.
+     *
+     * These rows are what the patient app's slot picker is built from,
+     * and until now only an administrator could change them -- on the
+     * web. A doctor who stops a Friday clinic had to ask someone.
+     */
+    public function schedule(Request $request)
+    {
+        $doctorId = $this->ownedDoctorId($request);
+
+        $order = "FIELD(day,'monday','tuesday','wednesday','thursday','friday','saturday','sunday')";
+
+        $rows = DoctorSchedule::where('doctor_id', $doctorId)
+            ->orderByRaw($order)
+            ->orderBy('start_time')
+            ->get();
+
+        return response()->json([
+            'summary' => [
+                'days' => $rows->where('is_available', true)->pluck('day')->unique()->count(),
+                'sessions' => $rows->count(),
+            ],
+            'schedule' => $rows->map(fn ($s) => [
+                'id' => $s->id,
+                'day' => $s->day,
+                'start_time' => substr((string) $s->start_time, 0, 5),
+                'end_time' => substr((string) $s->end_time, 0, 5),
+                'slot_duration' => (int) $s->slot_duration,
+                'is_available' => (bool) $s->is_available,
+            ])->all(),
+        ]);
+    }
+
+    public function scheduleStore(Request $request)
+    {
+        $doctorId = $this->ownedDoctorId($request);
+        $data = $this->scheduleRules($request);
+
+        $this->assertNoOverlap($doctorId, $data);
+
+        $row = DoctorSchedule::create($data + ['doctor_id' => $doctorId]);
+
+        return response()->json(['message' => 'Clinic hours added.', 'id' => $row->id], 201);
+    }
+
+    public function scheduleUpdate(Request $request, DoctorSchedule $schedule)
+    {
+        $doctorId = $this->ownedDoctorId($request);
+        abort_if($schedule->doctor_id !== $doctorId, 403, 'Those clinic hours belong to another doctor.');
+
+        $data = $this->scheduleRules($request);
+        $this->assertNoOverlap($doctorId, $data, $schedule->id);
+
+        $schedule->update($data);
+
+        return response()->json(['message' => 'Clinic hours updated.']);
+    }
+
+    public function scheduleDestroy(Request $request, DoctorSchedule $schedule)
+    {
+        $doctorId = $this->ownedDoctorId($request);
+        abort_if($schedule->doctor_id !== $doctorId, 403, 'Those clinic hours belong to another doctor.');
+
+        $schedule->delete();
+
+        return response()->json(['message' => 'Clinic hours removed.']);
+    }
+
+    private function scheduleRules(Request $request): array
+    {
+        return $request->validate([
+            'day' => ['required', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'slot_duration' => ['nullable', 'integer', 'min:5', 'max:120'],
+            'is_available' => ['nullable', 'boolean'],
+        ]);
+    }
+
+    /**
+     * Two sessions on the same day that overlap would offer the same
+     * minute as two bookable slots.
+     */
+    private function assertNoOverlap(int $doctorId, array $data, ?int $ignoreId = null): void
+    {
+        $clash = DoctorSchedule::where('doctor_id', $doctorId)
+            ->where('day', $data['day'])
+            ->when($ignoreId, fn ($q, $id) => $q->where('id', '!=', $id))
+            ->where('start_time', '<', $data['end_time'])
+            ->where('end_time', '>', $data['start_time'])
+            ->first();
+
+        abort_if(
+            $clash !== null,
+            422,
+            'That overlaps the ' . substr((string) $clash?->start_time, 0, 5) .
+            '-' . substr((string) $clash?->end_time, 0, 5) . ' session on the same day.'
+        );
     }
 }

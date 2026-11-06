@@ -11,11 +11,12 @@ class NotificationLog extends Model
 
     protected $fillable = [
         'patient_id', 'channel', 'recipient', 'template',
-        'message', 'status', 'provider', 'error_message', 'sent_at',
+        'message', 'status', 'provider', 'error_message', 'sent_at', 'read_at',
     ];
 
     protected $casts = [
         'sent_at' => 'datetime',
+        'read_at' => 'datetime',
     ];
 
     public function patient()
