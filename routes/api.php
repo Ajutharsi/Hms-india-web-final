@@ -8,9 +8,11 @@ use App\Http\Controllers\Api\AdminHrController;
 use App\Http\Controllers\Api\AdminInventoryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\DischargeSummaryController;
 use App\Http\Controllers\Api\DoctorController;
 use App\Http\Controllers\Api\EmrController;
 use App\Http\Controllers\Api\MeController;
+use App\Http\Controllers\Api\NursingAssessmentController;
 use App\Http\Controllers\Api\LabAssistantController;
 use App\Http\Controllers\Api\NurseController;
 use App\Http\Controllers\Api\PatientController;
@@ -184,6 +186,20 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::post('/profile', [DoctorController::class, 'updateProfile']);
     });
 
+    // The document a patient leaves with, gathered from the stay.
+    Route::prefix('discharge-summaries')->group(function () {
+        Route::get('/', [DischargeSummaryController::class, 'index']);
+        Route::get('/{admission}', [DischargeSummaryController::class, 'show']);
+        Route::post('/{admission}', [DischargeSummaryController::class, 'store']);
+    });
+
+    // Scored bedside assessments, shared by nurses and doctors.
+    Route::prefix('assessments')->group(function () {
+        Route::get('/', [NursingAssessmentController::class, 'index']);
+        Route::post('/patients/{patient}', [NursingAssessmentController::class, 'store']);
+        Route::delete('/{assessment}', [NursingAssessmentController::class, 'destroy']);
+    });
+
     // The patient's medical record -- shared by the clinical roles, the
     // way the web's EMR pages are.
     // What the signed-in account can see about itself, whatever its role.
@@ -224,6 +240,12 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::post('/tests', [LabAssistantController::class, 'labTestStore']);
         Route::put('/tests/{labTest}', [LabAssistantController::class, 'labTestUpdate']);
         Route::delete('/tests/{labTest}', [LabAssistantController::class, 'labTestDestroy']);
+
+        // Sample collection -- the step between ordering a test and
+        // having a result.
+        Route::get('/samples', [LabAssistantController::class, 'samples']);
+        Route::get('/samples/barcode', [LabAssistantController::class, 'sampleByBarcode']);
+        Route::post('/orders/{labOrder}/collect-sample', [LabAssistantController::class, 'collectSample']);
 
         Route::get('/orders', [LabAssistantController::class, 'labOrders']);
         Route::post('/orders', [LabAssistantController::class, 'labOrderStore']);

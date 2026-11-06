@@ -185,6 +185,9 @@ class LabAssistantController extends Controller
                 'status' => $o->status,
                 'notes' => $o->notes,
                 'tests_count' => $o->items_count,
+                'sample_barcode' => $o->sample_barcode,
+                'sample_type' => $o->sample_type,
+                'sample_collected_at' => optional($o->sample_collected_at)->format('Y-m-d H:i'),
             ]);
 
         return response()->json(['lab_orders' => $orders]);
@@ -409,5 +412,112 @@ class LabAssistantController extends Controller
                 'department' => $labAssistant->department?->name,
             ],
         ];
+    }
+
+    // -------------------------------------------------- sample collection
+
+    /**
+     * Orders waiting for a sample to be taken.
+     *
+     * An order used to go straight from "pending" to a typed-in result,
+     * so nothing told the phlebotomist which tubes still had to be
+     * drawn, and a mislabelled tube had nothing to trace.
+     */
+    public function samples(Request $request)
+    {
+        $this->authLabDesk($request);
+
+        $orders = LabOrder::with(['patient:id,name,mrn', 'sampleCollectedBy:id,name'])
+            ->withCount('items')
+            ->when($request->get('state') === 'collected', fn ($q) => $q->whereNotNull('sample_collected_at'))
+            ->when($request->get('state', 'pending') === 'pending', fn ($q) => $q->whereNull('sample_collected_at'))
+            ->whereNotIn('status', ['cancelled'])
+            ->latest('order_date')
+            ->take(150)
+            ->get();
+
+        $waiting = LabOrder::whereNull('sample_collected_at')->whereNotIn('status', ['cancelled'])->count();
+
+        return response()->json([
+            'stats' => [
+                'waiting' => $waiting,
+                'collected_today' => LabOrder::whereDate('sample_collected_at', now()->toDateString())->count(),
+            ],
+            'orders' => $orders->map(fn (LabOrder $o) => [
+                'id' => $o->id,
+                'order_no' => $o->order_no,
+                'patient_name' => $o->patient?->name,
+                'patient_mrn' => $o->patient?->mrn,
+                'order_date' => $o->order_date,
+                'tests_count' => $o->items_count,
+                'status' => $o->status,
+                'sample_barcode' => $o->sample_barcode,
+                'sample_type' => $o->sample_type,
+                'sample_collected_at' => optional($o->sample_collected_at)->format('Y-m-d H:i'),
+                'sample_collected_by' => $o->sampleCollectedBy?->name,
+                'sample_notes' => $o->sample_notes,
+            ])->all(),
+        ]);
+    }
+
+    public function collectSample(Request $request, LabOrder $labOrder)
+    {
+        $user = $this->authLabDesk($request);
+
+        $validated = $request->validate([
+            'sample_type' => ['required', 'string', 'max:60'],
+            'sample_barcode' => ['nullable', 'string', 'max:40', Rule::unique('lab_orders', 'sample_barcode')->ignore($labOrder->id)],
+            'sample_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        abort_if($labOrder->sample_collected_at !== null, 422, 'A sample for this order was already collected.');
+
+        $labOrder->update([
+            'sample_type' => $validated['sample_type'],
+            // The barcode goes on the tube; if the label printer gives
+            // one, it is used, otherwise the order number is the label.
+            'sample_barcode' => $validated['sample_barcode'] ?? $this->barcodeFor($labOrder),
+            'sample_notes' => $validated['sample_notes'] ?? null,
+            'sample_collected_at' => now(),
+            'sample_collected_by' => $user->id,
+            // Collected means the lab now has work to do on it.
+            'status' => $labOrder->status === 'pending' ? 'processing' : $labOrder->status,
+        ]);
+
+        return response()->json([
+            'message' => 'Sample collected.',
+            'sample_barcode' => $labOrder->fresh()->sample_barcode,
+        ]);
+    }
+
+    /** Find an order by the barcode on the tube. */
+    public function sampleByBarcode(Request $request)
+    {
+        $this->authLabDesk($request);
+
+        $barcode = trim((string) $request->get('barcode', ''));
+        abort_if($barcode === '', 422, 'Scan or type a barcode.');
+
+        $order = LabOrder::with(['patient:id,name,mrn', 'items.labTest'])
+            ->where('sample_barcode', $barcode)
+            ->first();
+
+        abort_if($order === null, 404, 'No sample with that barcode.');
+
+        return response()->json([
+            'id' => $order->id,
+            'order_no' => $order->order_no,
+            'patient_name' => $order->patient?->name,
+            'patient_mrn' => $order->patient?->mrn,
+            'status' => $order->status,
+            'sample_type' => $order->sample_type,
+            'sample_collected_at' => optional($order->sample_collected_at)->format('Y-m-d H:i'),
+            'tests' => $order->items->map(fn ($i) => $i->labTest?->name)->filter()->values()->all(),
+        ]);
+    }
+
+    private function barcodeFor(LabOrder $order): string
+    {
+        return 'S-' . str_replace(['LAB-', '/'], '', (string) $order->order_no);
     }
 }

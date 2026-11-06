@@ -16,6 +16,12 @@ class LabOrder extends Model
     protected $fillable = [
         'order_no', 'patient_id', 'doctor_id',
         'appointment_id', 'order_date', 'status', 'notes',
+        'sample_barcode', 'sample_type', 'sample_collected_at',
+        'sample_collected_by', 'sample_notes',
+    ];
+
+    protected $casts = [
+        'sample_collected_at' => 'datetime',
     ];
 
     protected static function boot()
@@ -50,5 +56,11 @@ class LabOrder extends Model
     public function results()
     {
         return $this->hasMany(LabResult::class);
+    }
+
+    /** Who drew the sample. */
+    public function sampleCollectedBy()
+    {
+        return $this->belongsTo(User::class, 'sample_collected_by');
     }
 }
