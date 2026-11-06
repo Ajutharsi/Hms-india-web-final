@@ -16,6 +16,7 @@ class DrugDispensing extends Model
     protected $fillable = [
         'dispensing_no', 'patient_id', 'prescription_id',
         'dispensed_by', 'dispensed_date', 'total_amount',
+        'sale_type', 'returned_from_id',
         'status', 'notes',
     ];
 

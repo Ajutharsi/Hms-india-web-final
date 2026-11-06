@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminRosterController;
+use App\Http\Controllers\Api\AdminPayrollController;
+use App\Http\Controllers\Api\AdminAccountsController;
+use App\Http\Controllers\Api\PharmacyCounterController;
 use App\Http\Controllers\Api\AdminSupplierController;
 use App\Http\Controllers\Api\AdminWardController;
 use App\Http\Controllers\Api\AdminDirectoryController;
@@ -341,6 +345,24 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::put('/leaves/{leave}/reject', [AdminHrController::class, 'leaveReject']);
         Route::delete('/leaves/{leave}', [AdminHrController::class, 'leaveDestroy']);
 
+        // Roster, payroll and the books -- the three the hospital ran
+        // on paper.
+        Route::get('/roster', [AdminRosterController::class, 'index']);
+        Route::post('/roster', [AdminRosterController::class, 'store']);
+        Route::delete('/roster/{roster}', [AdminRosterController::class, 'destroy']);
+
+        Route::get('/payroll', [AdminPayrollController::class, 'index']);
+        Route::post('/payroll', [AdminPayrollController::class, 'store']);
+        Route::put('/payroll/{payroll}/pay', [AdminPayrollController::class, 'pay']);
+        Route::delete('/payroll/{payroll}', [AdminPayrollController::class, 'destroy']);
+
+        Route::get('/expenses', [AdminAccountsController::class, 'expenses']);
+        Route::post('/expenses', [AdminAccountsController::class, 'storeExpense']);
+        Route::delete('/expenses/{expense}', [AdminAccountsController::class, 'destroyExpense']);
+        Route::get('/day-end', [AdminAccountsController::class, 'dayEnd']);
+        Route::post('/day-end', [AdminAccountsController::class, 'closeDay']);
+        Route::get('/closings', [AdminAccountsController::class, 'closings']);
+
         // The vendor master behind purchase orders.
         Route::get('/suppliers', [AdminSupplierController::class, 'index']);
         Route::post('/suppliers', [AdminSupplierController::class, 'store']);
@@ -432,6 +454,12 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
     });
 
     Route::prefix('pharmacy')->group(function () {
+        // The counter: walk-in sales and medicine brought back.
+        Route::get('/counter', [PharmacyCounterController::class, 'index']);
+        Route::post('/counter/sell', [PharmacyCounterController::class, 'sell']);
+        Route::get('/counter/returnable', [PharmacyCounterController::class, 'returnable']);
+        Route::post('/counter/{dispensing}/return', [PharmacyCounterController::class, 'returnItems']);
+
         Route::get('/dashboard', [PharmacyController::class, 'dashboard']);
 
         Route::get('/drugs', [PharmacyController::class, 'drugs']);
