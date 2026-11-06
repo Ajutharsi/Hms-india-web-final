@@ -56,6 +56,29 @@ class DoctorController extends Controller
         return $doctor->id;
     }
 
+    /**
+     * Who may write the clinical record for this appointment or
+     * consultation: its own doctor, or an administrator on their behalf.
+     *
+     * The web allows both — its route is `role:super_admin|admin|doctor`
+     * and neither ConsultationController nor PrescriptionController checks
+     * ownership beyond that. The record is filed against the appointment's
+     * doctor either way, not against whoever typed it, so an admin
+     * entering a consultation for a doctor does not change whose it is.
+     *
+     * This API refused the admin until now. That was my own reading of
+     * "a doctor's endpoints", not the web's rule, and it left two things
+     * an administrator can do at a desk undoable on a phone.
+     */
+    private function assertMayWriteClinicalRecord(Request $request, int $doctorId, string $what): void
+    {
+        if ($request->user()->hasAnyRole(['admin', 'super_admin'])) {
+            return;
+        }
+
+        abort_unless($doctorId === $this->ownedDoctorId($request), 403, "This {$what} belongs to another doctor.");
+    }
+
     private function appointmentPayload(Appointment $a): array
     {
         return [
@@ -193,7 +216,7 @@ class DoctorController extends Controller
 
     public function appointmentDetail(Request $request, Appointment $appointment)
     {
-        abort_unless($appointment->doctor_id === $this->ownedDoctorId($request), 403, 'This appointment belongs to another doctor.');
+        $this->assertMayWriteClinicalRecord($request, $appointment->doctor_id, 'appointment');
         $appointment->load('patient');
 
         $consultation = Consultation::where('appointment_id', $appointment->id)->latest('id')->first();
@@ -223,7 +246,7 @@ class DoctorController extends Controller
     /** Records the consultation for an appointment and completes it. */
     public function consultationStore(Request $request, Appointment $appointment)
     {
-        abort_unless($appointment->doctor_id === $this->ownedDoctorId($request), 403, 'This appointment belongs to another doctor.');
+        $this->assertMayWriteClinicalRecord($request, $appointment->doctor_id, 'appointment');
 
         $validated = $request->validate([
             'chief_complaint' => ['required', 'string', 'min:2', 'max:1000'],
@@ -259,7 +282,7 @@ class DoctorController extends Controller
 
     public function consultationDetail(Request $request, Consultation $consultation)
     {
-        abort_unless($consultation->doctor_id === $this->ownedDoctorId($request), 403, 'This consultation belongs to another doctor.');
+        $this->assertMayWriteClinicalRecord($request, $consultation->doctor_id, 'consultation');
 
         return response()->json(['consultation' => $this->consultationPayload($consultation->load('patient'))]);
     }
@@ -267,7 +290,7 @@ class DoctorController extends Controller
     /** Writes the prescription attached to a consultation. */
     public function prescriptionStore(Request $request, Consultation $consultation)
     {
-        abort_unless($consultation->doctor_id === $this->ownedDoctorId($request), 403, 'This consultation belongs to another doctor.');
+        $this->assertMayWriteClinicalRecord($request, $consultation->doctor_id, 'consultation');
 
         $validated = $request->validate([
             'medicines' => ['required', 'array', 'min:1'],
