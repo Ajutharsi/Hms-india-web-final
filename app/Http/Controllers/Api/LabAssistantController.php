@@ -34,6 +34,22 @@ class LabAssistantController extends Controller
     }
 
     /**
+     * Entering a result against an order. The web allows the ordering
+     * doctor as well as the lab (`role:...|lab_assistant|doctor`), and the
+     * app already showed them the button: the doctor's drawer opens the
+     * lab's own order screen, whose detail view carries "Enter results".
+     * Only the request behind it was refused, so the button was there and
+     * did nothing.
+     *
+     * The receptionist stays out, as on the web — they can raise an order
+     * and read one, but not write a clinical result.
+     */
+    private function authResultsEntry(Request $request): User
+    {
+        return $this->authRoles($request, ['lab_assistant', 'doctor'], 'This account cannot enter lab results.');
+    }
+
+    /**
      * Lab Tests catalog CRUD and Lab Orders list/create/detail, shared on
      * the web between the lab assistant, the receptionist and the doctor
      * (`role:...|lab_assistant|doctor|receptionist`) — the doctor is the
@@ -256,7 +272,7 @@ class LabAssistantController extends Controller
      */
     public function labOrderEnterResults(Request $request, LabOrder $labOrder)
     {
-        $nurse = $this->authLabAssistant($request);
+        $enteredBy = $this->authResultsEntry($request);
 
         $request->validate([
             'results' => ['required', 'array'],
@@ -296,7 +312,7 @@ class LabAssistantController extends Controller
                     'normal_range' => $data['normal_range'] ?? null,
                     'flag' => $flag,
                     'remarks' => $data['remarks'] ?? null,
-                    'performed_by' => $nurse->id,
+                    'performed_by' => $enteredBy->id,
                     'result_date' => now(),
                 ]
             );
