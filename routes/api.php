@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AdminInventoryController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\DoctorController;
+use App\Http\Controllers\Api\EmrController;
 use App\Http\Controllers\Api\LabAssistantController;
 use App\Http\Controllers\Api\NurseController;
 use App\Http\Controllers\Api\PatientController;
@@ -172,6 +173,25 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
 
         Route::get('/profile', [DoctorController::class, 'profile']);
         Route::post('/profile', [DoctorController::class, 'updateProfile']);
+    });
+
+    // The patient's medical record -- shared by the clinical roles, the
+    // way the web's EMR pages are.
+    Route::prefix('emr')->group(function () {
+        Route::get('/patients/{patient}', [EmrController::class, 'show']);
+
+        Route::post('/patients/{patient}/allergies', [EmrController::class, 'storeAllergy']);
+        Route::delete('/allergies/{allergy}', [EmrController::class, 'destroyAllergy']);
+
+        Route::post('/patients/{patient}/problems', [EmrController::class, 'storeProblem']);
+        Route::put('/problems/{problem}', [EmrController::class, 'updateProblem']);
+        Route::delete('/problems/{problem}', [EmrController::class, 'destroyProblem']);
+
+        Route::post('/patients/{patient}/records', [EmrController::class, 'storeRecord']);
+        Route::delete('/records/{record}', [EmrController::class, 'destroyRecord']);
+
+        Route::post('/patients/{patient}/attachments', [EmrController::class, 'storeAttachment']);
+        Route::delete('/attachments/{attachment}', [EmrController::class, 'destroyAttachment']);
     });
 
     Route::prefix('lab')->group(function () {
