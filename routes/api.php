@@ -50,13 +50,37 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
 
-    Route::prefix('patient')->group(function () {
+    // A second lock on each door.
+    //
+    // Role checks lived only inside the controller methods, so an
+    // endpoint whose author forgot the call was open to every signed-in
+    // account the moment it was written -- which is exactly what happened
+    // to the front desk's two patient-write endpoints. Nothing in the
+    // compiler or the linter would say so.
+    //
+    // Each line below is the union of what that prefix's controllers
+    // already allow, so this blocks nothing that works today; the
+    // controller still makes the finer per-method decision. It is here to
+    // catch the guard that is missing, not to replace the ones that are.
+
+    // These two sit under /patient because the patient app asked for them
+    // first, but they are not a patient's own data: they are the hospital's
+    // doctor list and that doctor's free slots. A nurse admitting someone,
+    // a lab assistant raising an order and the OT and ER screens all pick
+    // a doctor from the same list, so they are declared outside the
+    // patient group rather than being the reason it stays open.
+    Route::prefix('patient')
+        ->middleware('role:patient|doctor|nurse|lab_assistant|receptionist|pharmacist|staff|admin|super_admin')
+        ->group(function () {
+            Route::get('/doctors', [PatientController::class, 'doctors']);
+            Route::get('/slots', [PatientController::class, 'slots']);
+        });
+
+    Route::prefix('patient')->middleware('role:patient|admin|super_admin')->group(function () {
         Route::get('/appointments', [PatientController::class, 'appointments']);
         Route::post('/appointments', [PatientController::class, 'bookAppointment']);
         Route::post('/appointments/{appointment}/cancel', [PatientController::class, 'cancelAppointment']);
         Route::put('/appointments/{appointment}/reschedule', [PatientController::class, 'rescheduleAppointment']);
-        Route::get('/doctors', [PatientController::class, 'doctors']);
-        Route::get('/slots', [PatientController::class, 'slots']);
         Route::get('/prescriptions', [PatientController::class, 'prescriptions']);
         Route::get('/lab-results', [PatientController::class, 'labResults']);
         Route::get('/invoices', [PatientController::class, 'invoices']);
@@ -66,7 +90,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::post('/profile', [PatientController::class, 'updateProfile']);
     });
 
-    Route::prefix('nurse')->group(function () {
+    Route::prefix('nurse')->middleware('role:nurse|doctor|receptionist|staff|admin|super_admin')->group(function () {
         Route::get('/dashboard', [NurseController::class, 'dashboard']);
 
         Route::get('/patients', [NurseController::class, 'patients']);
@@ -164,7 +188,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
     // Staff role — its own dashboard; everything else (Patients, Food/Fluid
     // Intake, Rounds, Profile) reuses the /nurse/* routes above, same as the
     // web reuses the same controllers/routes for both roles.
-    Route::prefix('staff')->group(function () {
+    Route::prefix('staff')->middleware('role:staff|nurse|doctor|receptionist|admin|super_admin')->group(function () {
         Route::get('/dashboard', [NurseController::class, 'staffDashboard']);
 
         // The same two the nurse uses: their guard is authNurseOrStaff,
@@ -176,7 +200,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::post('/profile', [NurseController::class, 'updateProfile']);
     });
 
-    Route::prefix('doctor')->group(function () {
+    Route::prefix('doctor')->middleware('role:doctor|admin|super_admin')->group(function () {
         Route::get('/dashboard', [DoctorController::class, 'dashboard']);
 
         Route::get('/appointments', [DoctorController::class, 'appointments']);
@@ -209,7 +233,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
     });
 
     // The ward round: who has not been seen today, and the note.
-    Route::prefix('rounds')->group(function () {
+    Route::prefix('rounds')->middleware('role:nurse|doctor|admin|super_admin')->group(function () {
         Route::get('/', [ProgressNoteController::class, 'index']);
         Route::get('/{admission}', [ProgressNoteController::class, 'show']);
         Route::post('/{admission}/notes', [ProgressNoteController::class, 'store']);
@@ -217,14 +241,14 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
     });
 
     // The document a patient leaves with, gathered from the stay.
-    Route::prefix('discharge-summaries')->group(function () {
+    Route::prefix('discharge-summaries')->middleware('role:nurse|doctor|admin|super_admin')->group(function () {
         Route::get('/', [DischargeSummaryController::class, 'index']);
         Route::get('/{admission}', [DischargeSummaryController::class, 'show']);
         Route::post('/{admission}', [DischargeSummaryController::class, 'store']);
     });
 
     // Scored bedside assessments, shared by nurses and doctors.
-    Route::prefix('assessments')->group(function () {
+    Route::prefix('assessments')->middleware('role:nurse|doctor|admin|super_admin')->group(function () {
         Route::get('/', [NursingAssessmentController::class, 'index']);
         Route::post('/patients/{patient}', [NursingAssessmentController::class, 'store']);
         Route::delete('/{assessment}', [NursingAssessmentController::class, 'destroy']);
@@ -246,7 +270,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::get('/search', [MeController::class, 'search']);
     });
 
-    Route::prefix('emr')->group(function () {
+    Route::prefix('emr')->middleware('role:doctor|nurse|admin|super_admin')->group(function () {
         Route::get('/patients/{patient}', [EmrController::class, 'show']);
 
         Route::post('/patients/{patient}/allergies', [EmrController::class, 'storeAllergy']);
@@ -263,7 +287,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::delete('/attachments/{attachment}', [EmrController::class, 'destroyAttachment']);
     });
 
-    Route::prefix('lab')->group(function () {
+    Route::prefix('lab')->middleware('role:lab_assistant|doctor|receptionist|admin|super_admin')->group(function () {
         Route::get('/dashboard', [LabAssistantController::class, 'dashboard']);
 
         Route::get('/tests', [LabAssistantController::class, 'labTests']);
@@ -294,7 +318,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
      * roles' routes, which AuthorizesRoles already lets an admin through.
      * Only what has no clinical owner is here.
      */
-    Route::prefix('admin')->group(function () {
+    Route::prefix('admin')->middleware('role:admin|super_admin')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard']);
 
         Route::get('/reports/patients', [AdminController::class, 'patientReport']);
@@ -393,7 +417,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::put('/notification-templates/{template}', [AdminHrController::class, 'templateUpdate']);
     });
 
-    Route::prefix('receptionist')->group(function () {
+    Route::prefix('receptionist')->middleware('role:receptionist|doctor|admin|super_admin')->group(function () {
         Route::get('/dashboard', [ReceptionistController::class, 'dashboard']);
 
         Route::get('/patients', [ReceptionistController::class, 'patients']);
@@ -461,7 +485,7 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
         Route::delete('/billing/scheme-billing/{scheme}', [BillingController::class, 'schemeBillingDestroy']);
     });
 
-    Route::prefix('pharmacy')->group(function () {
+    Route::prefix('pharmacy')->middleware('role:pharmacist|receptionist|admin|super_admin')->group(function () {
         // The counter: walk-in sales and medicine brought back.
         Route::get('/counter', [PharmacyCounterController::class, 'index']);
         Route::post('/counter/sell', [PharmacyCounterController::class, 'sell']);
