@@ -20,6 +20,7 @@ use App\Models\Vital;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -459,7 +460,18 @@ class DoctorController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'current_password' => ['nullable', 'required_with:password', 'string'],
             'password' => ['nullable', 'confirmed', Password::min(8)],
+            'profile_photo' => ['nullable', 'image', 'max:2048'],
         ]);
+
+        // The doctor's profile returned a photo URL but had no way to set
+        // one: every other role could change their picture and the doctor
+        // could not. Same rules as the rest -- replace, don't accumulate.
+        if ($request->hasFile('profile_photo')) {
+            if ($user->profile_photo) {
+                Storage::disk('public')->delete($user->profile_photo);
+            }
+            $user->profile_photo = $request->file('profile_photo')->store('profile-photos', 'public');
+        }
 
         if (! empty($validated['password'])) {
             abort_unless(Hash::check($validated['current_password'], $user->password), 422, 'Your current password is incorrect.');

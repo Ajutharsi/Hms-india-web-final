@@ -184,6 +184,13 @@ class ReceptionistController extends Controller
 
     public function patientStore(Request $request)
     {
+        // Every sibling in this controller checks the role first; these
+        // two did not, which left any signed-in account -- a patient's
+        // own login included -- able to create and edit patient records
+        // through the front desk's endpoints. The route groups carry no
+        // role middleware, so the method is the only guard there is.
+        $this->authReceptionist($request);
+
         try {
             app(SubscriptionLimitService::class)->assertCanCreate('patient');
         } catch (\InvalidArgumentException $e) {
@@ -216,6 +223,8 @@ class ReceptionistController extends Controller
 
     public function patientUpdate(Request $request, Patient $patient)
     {
+        $this->authReceptionist($request);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->ignore($patient->user_id)],

@@ -14,6 +14,19 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Behind a tunnel or a load balancer the app sees the proxy's
+        // address and the proxy's plain-HTTP hop, so every URL it builds
+        // comes out http://127.0.0.1 and the images break on the phone.
+        // Which proxies to believe is a deployment fact, so it comes from
+        // the environment: TRUSTED_PROXIES=* for an ngrok demo, the
+        // balancer's address in production, and unset -- trust nobody --
+        // everywhere else.
+        if ($proxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(
+                at: $proxies === '*' ? '*' : array_map('trim', explode(',', $proxies)),
+            );
+        }
+
         // Every API route, authenticated or not. The login group keeps its
         // own tighter `api-login` limiter on top of this.
         $middleware->api(prepend: ['throttle:api']);

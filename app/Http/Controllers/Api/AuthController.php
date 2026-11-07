@@ -6,6 +6,7 @@ use App\Actions\Fortify\PasswordValidationRules;
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Patient;
+use App\Models\HospitalSetting;
 use App\Models\User;
 use App\Services\SubscriptionLimitService;
 use Illuminate\Http\Request;
@@ -162,6 +163,13 @@ class AuthController extends Controller
 
     private function userPayload(User $user): array
     {
+        // The hospital's own settings travel with the user, because the
+        // app needs them to render anything with money in it and only an
+        // administrator may read /admin/settings. The currency is a
+        // per-hospital setting the web has always honoured; the app was
+        // printing a rupee sign regardless of what the hospital chose.
+        $settings = HospitalSetting::forHospital($user->hospital_id);
+
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -169,6 +177,10 @@ class AuthController extends Controller
             'roles' => $user->getRoleNames(),
             'must_change_password' => (bool) $user->must_change_password,
             'profile_photo_url' => $user->profile_photo_url,
+            'hospital' => [
+                'name' => $settings->hospital_name ?: config('hospital.name'),
+                'currency' => $settings->currency ?: config('hospital.currency'),
+            ],
         ];
     }
 }
