@@ -166,6 +166,14 @@ Route::middleware(['auth:sanctum', 'subscription', 'password.change'])->group(fu
     // web reuses the same controllers/routes for both roles.
     Route::prefix('staff')->group(function () {
         Route::get('/dashboard', [NurseController::class, 'staffDashboard']);
+
+        // The same two the nurse uses: their guard is authNurseOrStaff,
+        // so a staff account was always allowed to call them -- it just
+        // had no path of its own, and so no profile screen in the app.
+        // A staff member could not change their own name, password or
+        // picture at all.
+        Route::get('/profile', [NurseController::class, 'profile']);
+        Route::post('/profile', [NurseController::class, 'updateProfile']);
     });
 
     Route::prefix('doctor')->group(function () {
